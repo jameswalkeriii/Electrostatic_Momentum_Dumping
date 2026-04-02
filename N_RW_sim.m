@@ -15,7 +15,7 @@ params.attitude_mode = "First Attitude"; % Flag determining the attitude of the 
 params.desat_flag = 0; % Flag determining if the servicer is in desat mode
 
 params.sim.sig_RN = [0;0;0]; % Initialized reference attitude
-params.sim.r_m = params.r_km*1000; % Initializing the seperation distance vector in m
+params.sim.r_m = params.N_rvec_km*1000; % Initializing the seperation distance vector in m
 params.sim.mode_code = 1; % 1: First, 2: Slew to Second, 3: Second, 4: Slew to First
 
 results = storage(Ttot); % Allocating storage for the stored results
@@ -51,12 +51,14 @@ for i_tt = 1:length(Ttot)
         switch params.attitude_mode
             
             case "First Attitude"
+                params.V = [10000,-10000];
 %                 [data_anti,~,~] = find_anti_torque(B_L2,data);
 %                 params.sim.sig_RN = C2MRP(data_anti.C2);
-                params.sim.sig_RN = [-1,0,0]';
+                params.sim.sig_RN = [0,0,1]';
                 params.attitude_mode = "Slewing_To_Second_Attitude";
                 
             case "Slewing_To_Second_Attitude"
+                params.V = [0,0];
                 RN = MRP2C(params.sim.sig_RN);
                 SN = MRP2C(sig_SN);
                 SR = SN*RN';
@@ -68,11 +70,13 @@ for i_tt = 1:length(Ttot)
                 end
                 
             case "Second Attitude"
+                params.V = [10000,-10000];
                 if dot(X_servicer(7:9)/norm(X_servicer(7:9)),B_L2/norm(B_L2)) > 0
                     params.sim.sig_RN = [0;0;0];
                     params.attitude_mode = "Slewing_To_First_Attitude";
                 end
             case "Slewing_To_First_Attitude"
+                params.V = [0,0];
                 RN = MRP2C(params.sim.sig_RN);
                 SN = MRP2C(sig_SN);
                 SR = SN*RN';
@@ -81,6 +85,7 @@ for i_tt = 1:length(Ttot)
                 if abs(theta_SR) < 0.0017 
                     params.attitude_mode = "First Attitude";
                     params.desat_flag = 0;
+                    params.V = [10000,-10000];
                 end
                 
         end
@@ -138,7 +143,7 @@ for i_tt = 1:length(Ttot)
     
     % Convert each electrostatic torque into the corresponding body frame
     % used by each rigid-body EOM.
-    L_serv = SN*S_L_elect_serv;
+    L_serv = S_L_elect_serv;
     L_debris = D_L_elect_debris;
     B_L2 = L_serv;
         
@@ -235,7 +240,7 @@ for i_tt = 1:length(Ttot)
     time_left_percentage = t/Ttot(end);
     if time_left_percentage*100 > percent_check
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
-        percent_check = percent_check +1;
+        percent_check = percent_check +2;
       
         plotting_servicer = params.servicer.N_spheres;
         for i = 1:length(params.servicer.N_spheres)
@@ -248,7 +253,7 @@ for i_tt = 1:length(Ttot)
         for i = 1:length(params.debris.N_spheres)
             sph_loc = params.debris.N_spheres(1:3,i);
             new_sph_loc_deb = DN*sph_loc;
-            plotting_sebris(1:3,i) = new_sph_loc_deb;
+            plotting_debris(1:3,i) = new_sph_loc_deb;
         end
         
         N_servicer_COM = SN'*params.servicer.S_COM;
@@ -259,12 +264,12 @@ for i_tt = 1:length(Ttot)
         hold on
         set(gca,'FontName','times')
         makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
-            N_debris_COM,N_servicer_COM+params.r_km*1000, [params.debris.voltage, params.servicer.voltage])
+            N_debris_COM,N_servicer_COM+params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
 
-        quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
+        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             10000*L_serv(1),10000*L_serv(2),10000*L_serv(3),'Linewidth',2)
         
-        quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
+        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             10000*S_F_on_serv(1),10000*S_F_on_serv(2),10000*S_F_on_serv(3),'Linewidth',2)
         
         quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...

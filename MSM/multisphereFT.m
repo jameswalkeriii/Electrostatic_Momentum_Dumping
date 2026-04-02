@@ -43,8 +43,9 @@ n = n1 + n2;
 % r is the position of body 2 relative to body 1, so body 1 stays at its
 % rotated origin and body 2 is translated by r.
 SPHS1t = SPHS1;
-SPHS1t(1:3,:) = C1*(SPHS1(1:3,:)) + r*ones(1,n1);
-SPHS2(1:3,:) = C2*(SPHS2(1:3,:));
+SPHS1t(1:3,:) = C1*(SPHS1(1:3,:));
+SPHS2(1:3,:) = C2*(SPHS2(1:3,:)) + r*ones(1,n2);
+% TODO: Pretty sure these two vectors are in different reference frames
 
 % build matrix with all spheres
 SPHS = [SPHS1t SPHS2];

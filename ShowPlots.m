@@ -84,10 +84,10 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot(1,:), false))
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(4:6,:), false))
         plot(time_hours,results.Xtot(4:6,:),'Linewidth',2)
         xlabel('Time (hours)','Fontsize',14)
-        ylabel('Angular Velocity Error','Fontsize',14)
+        ylabel('Angular Velocity','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
         
         figure

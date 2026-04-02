@@ -9,9 +9,9 @@ clear;
     params.debris.mass = 2000; % mass [kg]; 
     params.debris.voltage = 10e3; % [V] Voltage assuming fully conducting
     
-    debris_B_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
+    debris_N_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
     
-    debris_B_MI = [1000; 1000; 1000].*eye(3)*10000; % [kg m2] SSL Moment of Inertia From email with Dan
+    debris_N_MI = [1000; 1000; 1000].*eye(3)*10000; % [kg m2] SSL Moment of Inertia From email with Dan
 
     sphLoad1 = load('SSL1300_bus.mat');% Loading MSM model for SSL-1300 geometry to match source link: body 2.8 x 2.1 x 2.0 m, panels 14 x 2.3 m each
 
@@ -29,8 +29,8 @@ clear;
     % Maps from SoldiWorks model frame to SC body frame
     DCM_SW2B = [0 0 1; 1 0 0; 0 1 0]; 
 
-    servicer_B_MI = DCM_SW2B*DCM_IB*SW_MI; % in body frame
-    servicer_B_COM = DCM_SW2B*SW_COM + [-2 0 0]'; % in body frame
+    servicer_N_MI = DCM_SW2B*DCM_IB*SW_MI; % in body frame
+    servicer_N_COM = DCM_SW2B*SW_COM + [-2 0 0]'; % in body frame
 
     sphLoad2 = load('GOESR_bus.mat'); % Loading MSM model for GOES-R
 
@@ -39,7 +39,7 @@ clear;
 % Proximity Parameters
 
 % Intial Position with 0,0,0 at target COM
-params.r_km = ([30 0 0]')./1000; % [km]
+params.N_rvec_km = ([30 0 0]')./1000; % [km]
 
 % DCM for a 90 deg rotation about the z axis 
 M_90deg_Z = [cosd(90) , sind(90), 0;...
@@ -65,8 +65,8 @@ for i = 1:length(sphLoad1.SPHSb)
     params.debris.N_spheres(1:3,i) = new_sph_loc;
     params.debris.N_spheres(4,i) = sphLoad1.SPHSb(4,i);
 end
-params.debris.D_COM = debris_B_COM;
-params.debris.D_MI = debris_B_MI;
+params.debris.D_COM = debris_N_COM;
+params.debris.D_MI = debris_N_MI;
 
 
 SI = M_90deg_Z*M_90deg_Y;
@@ -77,8 +77,8 @@ for i = 1:length(sphLoad2.SPHSb)
     params.servicer.N_spheres(1:3,i) = new_sph_loc;
     params.servicer.N_spheres(4,i) = sphLoad2.SPHSb(4,i);
 end
-params.servicer.S_COM = servicer_B_COM;
-params.servicer.S_MI = servicer_B_MI;
+params.servicer.S_COM = servicer_N_COM;
+params.servicer.S_MI = servicer_N_MI;
 
 % Vector of spacecraft potentials
 params.V = [params.debris.voltage,params.servicer.voltage];
@@ -93,7 +93,7 @@ figure(1)
 hold on
 set(gca,'FontName','times')
 makeSphsPicture_2craft(params.debris.N_spheres, params.servicer.N_spheres,...
-[0 0 0], params.servicer.S_COM + params.r_km*1000, [params.debris.voltage, params.servicer.voltage])
+[0 0 0], params.servicer.S_COM + params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
 axis equal
 xlim([-3,50])
 ylim([-17,17])
@@ -124,7 +124,7 @@ flag_solve4torques = false;
 % end
 % 
 % [ ~, ~, ~, S_L2, ~, overlapFlag] = ...
-%     multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.r_km*1000, params.V,...
+%     multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.N_rvec_km*1000, params.V,...
 %     eye(3), eye(3),params.debris.D_COM, params.servicer.S_COM);
 % 
 % [data_anti,i_anti,tot] = find_anti_torque(S_L2,relative_orientation_EMM_Torques);
@@ -158,7 +158,7 @@ D_w_BN = [0;0;0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 5*3600;
+    tn = 50*3600;
 % Step size (s)
     dt = 1;
  
@@ -181,6 +181,5 @@ relative_orientation_EMM_Torques = [];
 results =...
     N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,relative_orientation_EMM_Torques);
 %%
-ShowPlots(params,results,Ttot(end),params.r_km,true)
-
+ShowPlots(params,results,Ttot(end),params.N_rvec_km,true)
 

@@ -17,7 +17,7 @@ for y = 1:n
             EA = [yaw,pitch,roll];
             SN = Euler3212C(EA)';
             [ ~, ~, B1_L1, B2_L2, ~, overlapFlag] = ...
-                multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.r_km*1000,...
+                multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.N_rvec_km*1000,...
                 params.V, eye(3), SN, params.debris.D_COM, params.servicer.S_COM);
             data{i}.EA = EA;
             data{i}.C2 = SN;
@@ -29,4 +29,3 @@ for y = 1:n
 end
 
 end
-
