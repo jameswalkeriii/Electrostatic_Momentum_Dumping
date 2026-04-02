@@ -6,6 +6,8 @@ range_pitch = linspace(-90,90,n);
 range_roll = linspace(-180,180,n);
 i = 1;
 
+data = cell(1,n^3);
+
 for y = 1:n
     yaw = range_yaw(y);
     for p = 1:n
@@ -13,15 +15,13 @@ for y = 1:n
         for r = 1:n
             roll = range_roll(r);
             EA = [yaw,pitch,roll];
-            C2 = Euler3212C(EA)';
-            [ ~, ~, ~, T_L2, ~, overlapFlag] = ...
-                multisphereFT( params.debris.spheres, params.servicer.spheres, params.r_km*1000,...
-                params.V, eye(3), C2, params.debris.COM, params.servicer.COM);
+            SN = Euler3212C(EA)';
+            [ ~, ~, B1_L1, B2_L2, ~, overlapFlag] = ...
+                multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.r_km*1000,...
+                params.V, eye(3), SN, params.debris.D_COM, params.servicer.S_COM);
             data{i}.EA = EA;
-            data{i}.C2 = C2;
-            B_L2 = C2*T_L2;
-            data{i}.B_L = B_L2;
-            data{i}.T_L = T_L2;
+            data{i}.C2 = SN;
+            data{i}.B2_L2 = B2_L2;
             data{i}.overlapFlag = overlapFlag;
             i = i+1;
         end

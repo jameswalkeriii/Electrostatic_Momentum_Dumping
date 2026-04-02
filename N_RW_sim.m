@@ -1,68 +1,80 @@
-function [Xtot, Htot, Ttot, ttot,aterrtot,werrtot,ustot,Lrtot,...
-    L_e_tot,params,normBN,reftot,rtot,flags] = N_RW_sim(X0, I_RW, Iws, Gs0,...
-    N, K, P, tn, dt,params,data)
+function results = N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,data)
 
-% Allocating parameters to respective variables
-I_RW = params.servicer.B_MI;
+I_RW = params.servicer.S_MI; % The moment of inertia of the servicer excluding the reaction wheels
 
+N = length(X0_servicer)-6; % Number of Reaction Wheels
+dt = Ttot(2)-Ttot(1); % Time step
 
-X = X0; 
-ttot = 0; 
-Xtot = X0; Htot = []; Ttot = []; aterrtot = []; werrtot = []; ustot = [];
-Lrtot = []; L_e_tot = []; normBN = []; reftot = []; rtot = []; flags = [];
+X_servicer = X0_servicer; % Intializing the state vector for the servicer
+X_target = X0_target; % Intializing the state vector for the target
 
-r = params.r_km*1000; V = params.V; C1 = eye(3); C2 = MRP2C(X(1:3));
+SN = MRP2C(X_servicer(1:3)); % DCM of the servicer from inertial frame to servicer body frame
+DN = MRP2C(X_target(1:3)); % DCM of the debris from inertial frame to debris body frame
 
-params.attitude_mode = "First Attitude";
-params.desat_mode = "IDLE";
-params.desat_flag = 0;
+params.attitude_mode = "First Attitude"; % Flag determining the attitude of the servicer
+params.desat_flag = 0; % Flag determining if the servicer is in desat mode
 
-r0 = r;
-t = 0; 
-refflag = 0; wheel_speed_flag = 0;
-sig_RN = [0;0;0]; sig_anti = [ -1;0;0];
-params.sig_RN = sig_RN;
+params.sim.sig_RN = [0;0;0]; % Initialized reference attitude
+params.sim.r_m = params.r_km*1000; % Initializing the seperation distance vector in m
 
-% sig_anti = [-0.0186;-0.9605;-0.0297];
-Xprv = X0;
-percent_check = 0;
+results = storage(Ttot); % Allocating storage for the stored results
 
-[ ~, ~, ~, L20, ~, overlapFlag] = ...
-    multisphereFT( params.debris.spheres, params.servicer.spheres, r, V, C1, C2,...
-    params.debris.COM, params.servicer.COM);
-L = L20;
-% L2 =  [ -0.000054008811829;0.003719000304351;-0.002708315879101];
-while t < tn
+percent_check = 0; % Shows how much time is left in the simulations
+
+for i_tt = 1:length(Ttot)
+    
+    params.sim.X_servicer = X_servicer; % store state of the servicer
+    params.sim.X_target = X_target; % store state of the target
+    
+    t = Ttot(i_tt); % Determine current time
+    
+%%%% Desate Mode Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % If the servicer is not in desat, check reaction wheel speeds
+    RW_wheel_speeds = abs(X_servicer(6+1:6+N,1));
     
     if params.desat_flag == 0
         for i_RW = 1:N
-            if abs(X(6+i_RW)) > params.wheel_speed_threshold
+            if RW_wheel_speeds(i_RW) > params.wheel_speed_threshold
                 params.desat_flag = 1;
                 params.sat_wheel = i_RW;
             end
         end
     end
     
+    % If the servicer is in desat, follow desat procedure
     if params.desat_flag == 1
         switch params.attitude_mode
             
             case "First Attitude"
-                [data_anti,~,~] = find_anti_torque(B_L2,data);
-                params.sig_RN = C2MRP(data_anti.C2);
+%                 [data_anti,~,~] = find_anti_torque(B_L2,data);
+%                 params.sim.sig_RN = C2MRP(data_anti.C2);
+                params.sim.sig_RN = [-1,0,0]';
                 params.attitude_mode = "Slewing_To_Second_Attitude";
                 
             case "Slewing_To_Second_Attitude"
-                if abs(norm(X(1:3)) - norm(params.sig_RN)) < .001 % TODO: Look at angle between not just norm
+                RN = MRP2C(params.sim.sig_RN);
+                SN = MRP2C(sig_SN);
+                SR = SN*RN';
+                sig_SR = C2MRP(SR);
+                theta_SR = 4*atan(norm(sig_SR));
+                % Once the spacecraft has reached the desired attitude
+                if abs(theta_SR) < 0.0017
                     params.attitude_mode = "Second Attitude";
                 end
                 
             case "Second Attitude"
-                if dot(X(7:9)/norm(X(7:9)),B_L2/norm(B_L2)) > 0
-                    params.sig_RN = [0;0;0];
+                if dot(X_servicer(7:9)/norm(X_servicer(7:9)),B_L2/norm(B_L2)) > 0
+                    params.sim.sig_RN = [0;0;0];
                     params.attitude_mode = "Slewing_To_First_Attitude";
                 end
             case "Slewing_To_First_Attitude"
-                if abs(norm(X(1:3)) - norm(params.sig_RN)) < .001 % TODO: Look at angle between not just norm
+                RN = MRP2C(params.sim.sig_RN);
+                SN = MRP2C(sig_SN);
+                SR = SN*RN';
+                sig_SR = C2MRP(SR);
+                theta_SR = 4*atan(norm(sig_SR));
+                if abs(theta_SR) < 0.0017 
                     params.attitude_mode = "First Attitude";
                     params.desat_flag = 0;
                 end
@@ -70,34 +82,25 @@ while t < tn
         end
         
     end
-
     
+%%%% Compute required control %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-    sig_RN = params.sig_RN;
-    reftot = [reftot,sig_RN];
-    
     R_w_RN = [0,0,0]';
     R_w_RN_dot = [0,0,0]';
     
-    sig_BN = X(1:3);
-    w_BN = X(4:6);
+    sig_SN = X_servicer(1:3);
+    w_SN = X_servicer(4:6);
     
-    RN = MRP2C(sig_RN);
-    BN = MRP2C(sig_BN);
-    BR = BN*RN';
-    sig_BR = C2MRP(BR);
+    RN = MRP2C(params.sim.sig_RN);
+    SN = MRP2C(sig_SN);
+    SR = SN*RN';
+    sig_SR = C2MRP(SR);
 
-    w_RN_B = -BR*R_w_RN;
-    w_BR_B = w_BN - w_RN_B;
-    w_dot_RN = BR*R_w_RN_dot;
+    S_w_RN = -SR*R_w_RN;
+    S_w_SR = w_SN - S_w_RN;
+    w_dot_RN = SR*R_w_RN_dot;
     
-    
-    tt = 1;
-    Om_mat = zeros(N,1);
-    while tt < N+1
-        Om_mat(tt) = X(6+tt);
-        tt = tt + 1;
-    end
+    Om_mat = X_servicer(6+1:6+N,1);
 
     Gs = Gs0;
     hs = [];
@@ -106,7 +109,7 @@ while t < tn
     
         gsi = Gs(1:3,k);
 
-        ws = dot(w_BN,gsi);
+        ws = dot(w_SN,gsi);
 
         hsi = Iws*(ws + Om_mat(k));
         hs = [hs;hsi];
@@ -116,19 +119,19 @@ while t < tn
     
 %     Currently Assuming the Torques are given in the body frame of the
 %     Target
-    [ F1, F2, T_L1, T_L2, ~, overlapFlag] = ...
-    multisphereFT( params.debris.spheres, params.servicer.spheres, r, V, C1, C2,...
-    params.debris.COM, params.servicer.COM);
+    [D_F_on_debris, S_F_on_serv, D_L_elect_debris, S_L_elect_serv, ~, overlapFlag] = ...
+    multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.sim.r_m, params.V, DN, SN,...
+    params.debris.D_COM, params.servicer.S_COM);
     
-    B_L2 = C2*T_L2;
+    B_L2 = SN*S_L_elect_serv;
 
     L = B_L2;
         
 
-    Lr = -K*sig_BR - P*(w_BR_B) + I_RW*((w_dot_RN) - tild(w_BN)*(w_RN_B)) + ...
-    tild(w_BN)*(I_RW*w_BN + Gs*hs)-L;
+    params.sim.Lr = -K*sig_SR - P*(S_w_SR) + I_RW*((w_dot_RN) - tild(w_SN)*(S_w_RN)) + ...
+    tild(w_SN)*(I_RW*w_SN + Gs*hs)-L;
 
-    us = pinv(Gs)*-Lr;
+    us = pinv(Gs)*-params.sim.Lr;
     % Remove Control
     % us = us.*0;
     
@@ -141,76 +144,76 @@ while t < tn
         end
     end
 
-% % Setting maximum wheel speeds
-%     Om_max = 50;
-%     for i = 1:3
-%         if X(6+i) > Om_max
-%             if us(i) > 0
-%                 us(i) = 0;
-%             end
-%         elseif X(6+i) < -Om_max
-%             if us(i) < 0
-%                 us(i) = 0;
-%             end
-%             
-%         end
-%     end
 
+    params.sim.aterr = norm(sig_SR);
+    params.sim.werr = norm(S_w_SR);
 
-    aterr = norm(sig_BR);
-    werr = norm(w_BR_B);
+%%%% RK4 integrator for the servicing spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    Xdot_servicer = N_RW_EOM(X_servicer, I_RW, Iws, Gs0, N,us,L);
+
+    k1 = Xdot_servicer*dt;
+    Xdot_servicer = N_RW_EOM(X_servicer+k1/2, I_RW, Iws, Gs0, N,us,L);
     
-    Xdot = N_RW_EOM(X, I_RW, Iws, Gs0, N,us,L);
+    k2 = Xdot_servicer*dt;
+    Xdot_servicer = N_RW_EOM(X_servicer+k2/2, I_RW, Iws, Gs0, N,us,L);
 
-    k1 = Xdot*dt;
-    Xdot = N_RW_EOM(X+k1/2, I_RW, Iws, Gs0, N,us,L);
+    k3 = Xdot_servicer*dt;
+    Xdot_servicer = N_RW_EOM(X_servicer+k3, I_RW, Iws, Gs0, N,us,L);
+    k4 = Xdot_servicer*dt;
+
+    X_servicer = X_servicer + 1/6*(k1+2*k2+2*k3+k4);
     
-    k2 = Xdot*dt;
-    Xdot = N_RW_EOM(X+k2/2, I_RW, Iws, Gs0, N,us,L);
+    %Switch to shadow set if needed
+        if norm(X_servicer(1:3))>1
+           X_servicer(1:3) = -X_servicer(1:3)/norm(X_servicer(1:3))^2;
+        end
+    
+    SN = MRP2C(X_servicer(1:3));
+    
+%%%% RK4 integrator for the Target spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    k3 = Xdot*dt;
-    Xdot = N_RW_EOM(X+k3, I_RW, Iws, Gs0, N,us,L);
-    k4 = Xdot*dt;
+    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
 
-    X = X + 1/6*(k1+2*k2+2*k3+k4);
+    k1 = Xdot_target*dt;
+    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    
+    k2 = Xdot_target*dt;
+    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+
+    k3 = Xdot_target*dt;
+    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    k4 = Xdot_target*dt;
+
+    X_target = X_target + 1/6*(k1+2*k2+2*k3+k4);
     
     %Switch to shadow set
-    if norm(X(1:3))>1
-       X(1:3) = -X(1:3)/norm(X(1:3))^2;
-    end
+        if norm(X_target(1:3))>1
+           X_target(1:3) = -X_target(1:3)/norm(X_target(1:3))^2;
+        end
 
-    C2 = MRP2C(X(1:3));
+%     DN = MRP2C(X_target(1:3));
     
-    HB = I_RW*w_BN;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+    HB = I_RW*w_SN;
     
-    H = HB + Hw;
+    params.sim.H = HB + Hw;
+    
+    params.sim.us = us;
+    params.sim.L_e = L;
     
  
-    ttot = [ttot;t];
-    t = t+dt;
-    dX = X-Xprv;
-    Xprv = X;
-    Htot = [Htot,H];
-    Xtot = [Xtot,X];
-    aterrtot = [aterrtot,aterr];
-    werrtot = [werrtot,werr];
-    ustot = [ustot,us];
-    Lrtot = [Lrtot,Lr];
-    L_e_tot = [L_e_tot,L];
-    normBN = [normBN,norm(X(1:3))];
-    rtot = [rtot,r];
-    flags = [flags,[refflag;wheel_speed_flag]];
+    results = update_storage(results,i_tt,params);
     
-    time_left_percentage = t/tn;
+    time_left_percentage = t/Ttot(end);
     if time_left_percentage*100 > percent_check
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
         percent_check = percent_check +1;
       
-        plotting_servicer = params.servicer.spheres;
-        for i = 1:length(params.servicer.spheres)
-            sph_loc = params.servicer.spheres(1:3,i);
-            new_sph_loc = C2*sph_loc;
+        plotting_servicer = params.servicer.N_spheres;
+        for i = 1:length(params.servicer.N_spheres)
+            sph_loc = params.servicer.N_spheres(1:3,i);
+            new_sph_loc = SN*sph_loc;
             plotting_servicer(1:3,i) = new_sph_loc;
         end
         
@@ -218,8 +221,22 @@ while t < tn
         clf(fig)
         hold on
         set(gca,'FontName','times')
-        makeSphsPicture_2craft(plotting_servicer, params.debris.spheres, params.r_km*1000,...
+        makeSphsPicture_2craft(plotting_servicer, params.debris.N_spheres, params.r_km*1000,...
             [0 0 0], [params.servicer.voltage, params.debris.voltage])
+        N_servicer_COM = SN'*params.servicer.S_COM;
+        N_debris_COM = DN'*params.debris.D_COM;
+        quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
+            10000*L(1),10000*L(2),10000*L(3),'Linewidth',2)
+        
+        quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
+            10000*S_F_on_serv(1),10000*S_F_on_serv(2),10000*S_F_on_serv(3),'Linewidth',2)
+        
+        quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
+            10000*D_L_elect_debris(1),10000*D_L_elect_debris(2),10000*D_L_elect_debris(3),'Linewidth',2)
+        
+        quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
+            10000*D_F_on_debris(1),10000*D_F_on_debris(2),10000*D_F_on_debris(3),'Linewidth',2)
+        
         axis equal
         xlim([-3,50])
         ylim([-17,17])

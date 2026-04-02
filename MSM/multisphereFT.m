@@ -40,9 +40,15 @@ n2 = size(SPHS2,2);
 n = n1 + n2; 
 
 % rotate positions of spheres according to DCMs
+% Suggested fix:
+% r is the position of body 2 relative to body 1.
+% If you want to enforce that convention explicitly, keep body 1 at its
+% rotated origin and translate body 2 by r.
 SPHS1t = SPHS1;
-SPHS1t(1:3,:) = C1*(SPHS1(1:3,:)) + r*ones(1,n1); 
-SPHS2(1:3,:) = C2*(SPHS2(1:3,:)); %
+SPHS1t(1:3,:) = C1*(SPHS1(1:3,:)); 
+SPHS2(1:3,:) = C2*(SPHS2(1:3,:) + r*ones(1,n2)); %
+% Suggested one-line change to try:
+% SPHS2(1:3,:) = C2*(SPHS2(1:3,:)) + r*ones(1,n2); %
 
 % build matrix with all spheres
 SPHS = [SPHS1t SPHS2];
@@ -55,25 +61,20 @@ sph2 = repelem(SPHS(1:3,:),1,size(SPHS,2));
 relPos = sum((sph1-sph2).^2,1).^0.5; %vecnorm, but 1/10 the time. Finds relative positions between each pair of spheres in the two bodies
 
 relPos = reshape(relPos, n, n); %distance between each sphere: wil fill off-diagonal elements
+
+%C = 1/k*[Rsc1*(1+Rsc2/sep), -Rsc1*Rsc2/sep; -Rsc1*Rsc2/sep Rsc2*(1+Rsc1/sep)];
+
 Cinv = relPos + SPHS(4,:).*eye(n);
 
-% check if any spheres are overlapping
-% lapCheck = (Cinv - repmat(1.1*SPHS(4,:), size(SPHS,2), 1));
 % check if distance between sphere1 and 2 is larger than r1 && r2
 lapCheck = relPos(n1+1:end, 1:n1) - 1.1*(SPHS1(4,:)+SPHS2(4,:)');
 
 overlapFlag = 0;
 % if any(triu(lapCheck,1) < 0, 'all')
 if any(lapCheck < 0, 'all')
-
     overlapFlag = 1;
-%     disp('Overlapping spheres')
-%     figure; scatter3(SPHS1t(1,:),SPHS1t(2,:),SPHS1t(3,:)); hold on; scatter3(SPHS2(1,:),SPHS2(2,:),SPHS2(3,:),'filled');axis equal
-% figure; makeSphsPicture_2craft( SPHS1t, SPHS2, [0 0 0], [0 0 0], V(1), eye(3), eye(3))
+    disp('Overlapping spheres')
 end
-
-
-% figure; makeSphsPicture_2craft( SPHS1t, SPHS2, [0 0 0], [0 0 0], V(1), eye(3), eye(3)); view(3)
 
 Cinv = Cinv.^-1;
 

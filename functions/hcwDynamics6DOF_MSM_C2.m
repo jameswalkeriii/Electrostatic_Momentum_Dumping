@@ -86,6 +86,8 @@ if strcmp(params.perturb, 'electro') %compute electrostatic forces/torques
     DCM_SH = quat2dcm(u(7:10)');
     DCM_TH = quat2dcm(u(20:23)');
     r_ST_H = (u(1:3)-u(14:16))*1000; % distance from servicer to target in Hill [m]
+    % Suggested one-line change to try if force direction looks flipped:
+    % r_ST_H = (u(14:16)-u(1:3))*1000; % position of target relative to servicer in Hill [m]
     V1     = params.V1(t);
     V2     = params.V2(t);
     [ F1_H, F2_H, L1_H, L2_H] = multisphereFT( params.SPHS1, params.SPHS2, r_ST_H, [V1;V2], DCM_SH', DCM_TH', params.COM1, params.COM2 ); %computes forces and torques

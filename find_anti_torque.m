@@ -10,8 +10,8 @@ for i = 1:length(data)
     % If the spacecraft are overlapping, then set the value as NaN
     if data{i}.overlapFlag == 0
         % If not, add the sum measure to tot
-        E_torque_Bframe = data{i}.B_L;
-        Ang_mom_Bframe = data{i}.C2*H;
+        E_torque_Bframe = data{i}.B2_L2;
+        Ang_mom_Bframe = H;
         
         E_torque_Bframe_dir = E_torque_Bframe/norm(E_torque_Bframe);
         Ang_mom_Bframe_dir = Ang_mom_Bframe/norm(Ang_mom_Bframe);
