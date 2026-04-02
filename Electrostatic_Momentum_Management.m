@@ -11,7 +11,7 @@ clear;
     
     debris_B_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
     
-    debris_B_MI = [1000; 1000; 1000].*eye(3); % [kg m2] SSL Moment of Inertia From email with Dan
+    debris_B_MI = [1000; 1000; 1000].*eye(3)*10000; % [kg m2] SSL Moment of Inertia From email with Dan
 
     sphLoad1 = load('SSL1300_bus.mat');% Loading MSM model for SSL-1300 geometry to match source link: body 2.8 x 2.1 x 2.0 m, panels 14 x 2.3 m each
 
@@ -92,8 +92,8 @@ clf(figure(1))
 figure(1)
 hold on
 set(gca,'FontName','times')
-makeSphsPicture_2craft(params.servicer.N_spheres, params.debris.N_spheres, params.r_km*1000,...
-[0 0 0], [params.debris.voltage, params.servicer.voltage])
+makeSphsPicture_2craft(params.debris.N_spheres, params.servicer.N_spheres,...
+[0 0 0], params.servicer.S_COM + params.r_km*1000, [params.debris.voltage, params.servicer.voltage])
 axis equal
 xlim([-3,50])
 ylim([-17,17])
@@ -169,7 +169,7 @@ params0 = params;
 % Intial wheel speeds 
 Om_0 = [0;0;0];
 
-params.wheel_speed_threshold = 5000/60/(2*pi);
+params.wheel_speed_threshold = 20;%5000/60*(2*pi);
 
 % [data_anti,~,~] = find_anti_torque(H,data);
 

@@ -7,6 +7,12 @@ set(0,'defaultAxesFontSize',16)
 set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'bold') ;
 
     if flag == true
+        time_hours = results.Ttot/3600;
+        mode_hist = results.flags(2,:);
+        mode_colors = [0.85 0.92 1.00;
+                       1.00 0.93 0.80;
+                       0.86 0.95 0.86;
+                       0.96 0.86 0.86];
         
         for i = 1:length(results.Htot)
             normH(i) = norm(results.Htot(:,i));
@@ -20,7 +26,6 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
             intial_sph_loc(4,i) = params.servicer.N_spheres(4,i);
         end
         C2_end = MRP2C(results.Xtot(1:3,end));
-%         C2_end = MRP2C([-1;0;0]);
         final_sph_loc = params.servicer.N_spheres*0;
         for i = 1:length(params.servicer.N_spheres)
             final_sph_loc(1:3,i) = C2_end*params.servicer.N_spheres(1:3,i);
@@ -28,41 +33,93 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         end
 
         figure
-        plot(results.Ttot,results.Xtot(1:3,:),'Linewidth',2)
-        xlabel('Time (s)')
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(1:3,:), false))
+        plot(time_hours,results.Xtot(1:3,:),'Linewidth',2)
+        xlabel('Time (hours)')
         ylabel('MRP Components')
+        xlim([time_hours(1), time_hours(end)])
 
         figure
-        plot(results.Ttot,results.normBN,'Linewidth',2)
-        xlabel('Time (s)')
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.normBN, false))
+        plot(time_hours,results.normBN,'Linewidth',2)
+        xlabel('Time (hours)')
         ylabel('MRP Magnitude')
+        xlim([time_hours(1), time_hours(end)])
 
         
 
         figure
-        plot(results.Ttot,results.Xtot(7:9,:)*60*2*pi,'Linewidth',2)
-        xlabel('Time (s)','Fontsize',14)
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(7:9,:)*60*2*pi, false))
+        plot(time_hours,results.Xtot(7:9,:)*60*2*pi,'Linewidth',2)
+        xlabel('Time (hours)','Fontsize',14)
         ylabel('Reaction Wheel Speeds (rpm)','Fontsize',14)
         legend('Om\_1','Om\_2','Om\_3','Fontsize',14)
-        xlim([0,ttotal])
+        xlim([time_hours(1), time_hours(end)])
         
         figure
-        plot(results.Ttot,results.reftot(1:3,:),'Linewidth',2)
-        xlabel('Time (s)')
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.reftot(1:3,:), false))
+        plot(time_hours,results.reftot(1:3,:),'Linewidth',2)
+        xlabel('Time (hours)')
         ylabel('Desired Attitude (MRPs)')
+        xlim([time_hours(1), time_hours(end)])
 
         figure
         subplot(2,1,1)
-        semilogy(results.Ttot,results.aterrtot,'Linewidth',2)
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.aterrtot, true))
+        semilogy(time_hours,results.aterrtot,'Linewidth',2)
         ylabel('Magnitude sigma B/R ','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
         subplot(2,1,2)
-        semilogy(results.Ttot,results.werrtot,'Linewidth',2)
-        xlabel('Time (s)','Fontsize',14)
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot, true))
+        semilogy(time_hours,results.werrtot,'Linewidth',2)
+        xlabel('Time (hours)','Fontsize',14)
         ylabel('Magnitude omega B/R ','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
+
+        figure
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot(1,:), false))
+        plot(time_hours,results.Xtot(4:6,:),'Linewidth',2)
+        xlabel('Time (hours)','Fontsize',14)
+        ylabel('Angular Velocity Error','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
+        
+        figure
+        mode_change_idx = [1, find(diff(mode_hist) ~= 0) + 1, length(mode_hist) + 1];
+        hold on
+        for i_mode = 1:length(mode_change_idx)-1
+            idx_start = mode_change_idx(i_mode);
+            idx_end = mode_change_idx(i_mode+1) - 1;
+            active_mode = mode_hist(idx_start);
+            x_start = time_hours(idx_start);
+            x_end = time_hours(idx_end);
+            fill([x_start x_end x_end x_start], [0.5 0.5 4.5 4.5], ...
+                mode_colors(active_mode,:), 'FaceAlpha', 0.35, 'EdgeColor', 'none');
+        end
+        stairs(time_hours,mode_hist,'k','Linewidth',2)
+        hold on
+        mode_switch_idx = find(diff(mode_hist) ~= 0) + 1;
+        for i_mode = 1:length(mode_switch_idx)
+            xline(time_hours(mode_switch_idx(i_mode)),'--')
+        end
+        ylim([0.5,4.5])
+        yticks(1:4)
+        yticklabels({'First Attitude','Slew to Second','Second Attitude','Slew to First'})
+        xlabel('Time (hours)','Fontsize',14)
+        ylabel('Desaturation Mode','Fontsize',14)
+        title('Desaturation Mode History','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
         
         figure 
-        plot(results.Ttot/3600/24,results.Xtot(7,:)*60/(2*pi),'Linewidth',2)
         hold on
+        addModeBands(gca, results.Ttot/3600/24, mode_hist, mode_colors, calcPlotLimits(results.Xtot(7:9,:)*60/(2*pi), false))
+        plot(results.Ttot/3600/24,results.Xtot(7,:)*60/(2*pi),'Linewidth',2)
         plot(results.Ttot/3600/24,results.Xtot(8,:)*60/(2*pi),'Linewidth',2)
         plot(results.Ttot/3600/24,results.Xtot(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
         xlabel('Time (days)','Fontsize',14,'Fontname','Times New Roman')
@@ -72,17 +129,21 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         
         
         figure
-        plot(results.Ttot,normH,'Linewidth',2)
         hold on
-        xline(38120,'--')
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(normH, false))
+        plot(time_hours,normH,'Linewidth',2)
         ylabel('Angular Momentum (Nms)','Fontsize',14,'Fontname','Times New Roman')
-        xlabel('Time (s)','Fontsize',14,'Fontname','Times New Roman')
+        xlabel('Time (hours)','Fontsize',14,'Fontname','Times New Roman')
+        xlim([time_hours(1), time_hours(end)])
 
         figure
-        plot(results.Ttot,results.L_e_tot,'Linewidth',2)
+        hold on
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_tot, false))
+        plot(time_hours,results.L_e_tot,'Linewidth',2)
         ylabel('Electrostatic Torques (Nm)','Fontsize',14)
-        xlabel('Time (s)','Fontsize',14)
+        xlabel('Time (hours)','Fontsize',14)
         legend('L\_x','L\_y','L\_z','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
 
         %Initial position plot
         figure 
@@ -122,4 +183,52 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         view(3)
     end
 
+end
+
+function addModeBands(ax, t_hist, mode_hist, mode_colors, y_limits)
+    mode_change_idx = [1, find(diff(mode_hist) ~= 0) + 1, length(mode_hist) + 1];
+    for i_mode = 1:length(mode_change_idx)-1
+        idx_start = mode_change_idx(i_mode);
+        idx_end = mode_change_idx(i_mode+1) - 1;
+        active_mode = mode_hist(idx_start);
+        x_start = t_hist(idx_start);
+        x_end = t_hist(idx_end);
+        patch(ax, [x_start x_end x_end x_start], [y_limits(1) y_limits(1) y_limits(2) y_limits(2)], ...
+            mode_colors(active_mode,:), 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'HandleVisibility', 'off');
+    end
+    ylim(ax, y_limits)
+    set(ax, 'Layer', 'top')
+end
+
+function y_limits = calcPlotLimits(data, use_log)
+    vals = data(:);
+    vals = vals(isfinite(vals));
+    if use_log
+        vals = vals(vals > 0);
+    end
+
+    if isempty(vals)
+        y_limits = [0.1 1];
+        return
+    end
+
+    y_min = min(vals);
+    y_max = max(vals);
+
+    if y_min == y_max
+        if use_log
+            y_limits = [y_min/10, y_max*10];
+        else
+            pad = max(1, abs(y_min)*0.1 + 1e-6);
+            y_limits = [y_min-pad, y_max+pad];
+        end
+        return
+    end
+
+    if use_log
+        y_limits = [10^floor(log10(y_min)), 10^ceil(log10(y_max))];
+    else
+        pad = 0.05*(y_max-y_min);
+        y_limits = [y_min-pad, y_max+pad];
+    end
 end

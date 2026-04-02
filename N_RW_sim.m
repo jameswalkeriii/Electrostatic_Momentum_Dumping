@@ -16,17 +16,21 @@ params.desat_flag = 0; % Flag determining if the servicer is in desat mode
 
 params.sim.sig_RN = [0;0;0]; % Initialized reference attitude
 params.sim.r_m = params.r_km*1000; % Initializing the seperation distance vector in m
+params.sim.mode_code = 1; % 1: First, 2: Slew to Second, 3: Second, 4: Slew to First
 
 results = storage(Ttot); % Allocating storage for the stored results
 
 percent_check = 0; % Shows how much time is left in the simulations
 
+params.sim.X_servicer = X_servicer; % store state of the servicer
+params.sim.X_target = X_target; % store state of the target
+
 for i_tt = 1:length(Ttot)
-    
-    params.sim.X_servicer = X_servicer; % store state of the servicer
-    params.sim.X_target = X_target; % store state of the target
-    
+  
     t = Ttot(i_tt); % Determine current time
+    if t == 7895
+        ddd = 0;
+    end
     
 %%%% Desate Mode Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -82,6 +86,17 @@ for i_tt = 1:length(Ttot)
         end
         
     end
+
+    switch params.attitude_mode
+        case "First Attitude"
+            params.sim.mode_code = 1;
+        case "Slewing_To_Second_Attitude"
+            params.sim.mode_code = 2;
+        case "Second Attitude"
+            params.sim.mode_code = 3;
+        case "Slewing_To_First_Attitude"
+            params.sim.mode_code = 4;
+    end
     
 %%%% Compute required control %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
@@ -117,19 +132,19 @@ for i_tt = 1:length(Ttot)
     
     end
     
-%     Currently Assuming the Torques are given in the body frame of the
-%     Target
     [D_F_on_debris, S_F_on_serv, D_L_elect_debris, S_L_elect_serv, ~, overlapFlag] = ...
     multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.sim.r_m, params.V, DN, SN,...
     params.debris.D_COM, params.servicer.S_COM);
     
-    B_L2 = SN*S_L_elect_serv;
-
-    L = B_L2;
+    % Convert each electrostatic torque into the corresponding body frame
+    % used by each rigid-body EOM.
+    L_serv = SN*S_L_elect_serv;
+    L_debris = D_L_elect_debris;
+    B_L2 = L_serv;
         
 
     params.sim.Lr = -K*sig_SR - P*(S_w_SR) + I_RW*((w_dot_RN) - tild(w_SN)*(S_w_RN)) + ...
-    tild(w_SN)*(I_RW*w_SN + Gs*hs)-L;
+    tild(w_SN)*(I_RW*w_SN + Gs*hs)-L_serv;
 
     us = pinv(Gs)*-params.sim.Lr;
     % Remove Control
@@ -150,16 +165,16 @@ for i_tt = 1:length(Ttot)
 
 %%%% RK4 integrator for the servicing spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Xdot_servicer = N_RW_EOM(X_servicer, I_RW, Iws, Gs0, N,us,L);
+    Xdot_servicer = N_RW_EOM(X_servicer, I_RW, Iws, Gs0, N,us,L_serv);
 
     k1 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_servicer+k1/2, I_RW, Iws, Gs0, N,us,L);
+    Xdot_servicer = N_RW_EOM(X_servicer+k1/2, I_RW, Iws, Gs0, N,us,L_serv);
     
     k2 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_servicer+k2/2, I_RW, Iws, Gs0, N,us,L);
+    Xdot_servicer = N_RW_EOM(X_servicer+k2/2, I_RW, Iws, Gs0, N,us,L_serv);
 
     k3 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_servicer+k3, I_RW, Iws, Gs0, N,us,L);
+    Xdot_servicer = N_RW_EOM(X_servicer+k3, I_RW, Iws, Gs0, N,us,L_serv);
     k4 = Xdot_servicer*dt;
 
     X_servicer = X_servicer + 1/6*(k1+2*k2+2*k3+k4);
@@ -173,16 +188,16 @@ for i_tt = 1:length(Ttot)
     
 %%%% RK4 integrator for the Target spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L_debris);
 
     k1 = Xdot_target*dt;
-    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    Xdot_target = N_MRP_EOM(X_target+k1/2,params.debris.D_MI,L_debris);
     
     k2 = Xdot_target*dt;
-    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    Xdot_target = N_MRP_EOM(X_target+k2/2,params.debris.D_MI,L_debris);
 
     k3 = Xdot_target*dt;
-    Xdot_target = N_MRP_EOM(X_target,params.debris.D_MI,L);
+    Xdot_target = N_MRP_EOM(X_target+k3,params.debris.D_MI,L_debris);
     k4 = Xdot_target*dt;
 
     X_target = X_target + 1/6*(k1+2*k2+2*k3+k4);
@@ -192,15 +207,27 @@ for i_tt = 1:length(Ttot)
            X_target(1:3) = -X_target(1:3)/norm(X_target(1:3))^2;
         end
 
-%     DN = MRP2C(X_target(1:3));
+    DN = MRP2C(X_target(1:3));
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+    % Store the updated state and momentum consistently after integration.
+    params.sim.X_servicer = X_servicer;
+    params.sim.X_target = X_target;
+
+    w_SN = X_servicer(4:6);
+    Om_mat = X_servicer(6+1:6+N,1);
     HB = I_RW*w_SN;
+    Hw = zeros(3,1);
+    for k = 1:N
+        gsi = Gs0(1:3,k);
+        ws = dot(w_SN,gsi);
+        Hw = Hw + Iws*(ws + Om_mat(k))*gsi;
+    end
     
     params.sim.H = HB + Hw;
     
     params.sim.us = us;
-    params.sim.L_e = L;
+    params.sim.L_e = L_serv;
     
  
     results = update_storage(results,i_tt,params);
@@ -213,20 +240,29 @@ for i_tt = 1:length(Ttot)
         plotting_servicer = params.servicer.N_spheres;
         for i = 1:length(params.servicer.N_spheres)
             sph_loc = params.servicer.N_spheres(1:3,i);
-            new_sph_loc = SN*sph_loc;
-            plotting_servicer(1:3,i) = new_sph_loc;
+            new_sph_loc_serv = SN*sph_loc;
+            plotting_servicer(1:3,i) = new_sph_loc_serv;
         end
+        
+        plotting_debris = params.debris.N_spheres;
+        for i = 1:length(params.debris.N_spheres)
+            sph_loc = params.debris.N_spheres(1:3,i);
+            new_sph_loc_deb = DN*sph_loc;
+            plotting_sebris(1:3,i) = new_sph_loc_deb;
+        end
+        
+        N_servicer_COM = SN'*params.servicer.S_COM;
+        N_debris_COM = DN'*params.debris.D_COM;
         
         fig = figure(100);
         clf(fig)
         hold on
         set(gca,'FontName','times')
-        makeSphsPicture_2craft(plotting_servicer, params.debris.N_spheres, params.r_km*1000,...
-            [0 0 0], [params.servicer.voltage, params.debris.voltage])
-        N_servicer_COM = SN'*params.servicer.S_COM;
-        N_debris_COM = DN'*params.debris.D_COM;
+        makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
+            N_debris_COM,N_servicer_COM+params.r_km*1000, [params.debris.voltage, params.servicer.voltage])
+
         quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
-            10000*L(1),10000*L(2),10000*L(3),'Linewidth',2)
+            10000*L_serv(1),10000*L_serv(2),10000*L_serv(3),'Linewidth',2)
         
         quiver3(N_servicer_COM(1)+params.r_km(1)*1000,N_servicer_COM(2)+params.r_km(2)*1000,N_servicer_COM(3)+params.r_km(3)*1000,...
             10000*S_F_on_serv(1),10000*S_F_on_serv(2),10000*S_F_on_serv(3),'Linewidth',2)
@@ -256,4 +292,3 @@ for i_tt = 1:length(Ttot)
 
 end
 end
-

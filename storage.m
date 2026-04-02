@@ -44,6 +44,7 @@ classdef storage
          obj.normBN(:,tt) = norm(params.sim.X_servicer(1:3));
          obj.reftot(:,tt) = params.sim.sig_RN;
          obj.rtot(:,tt) = params.sim.r_m;
+         obj.flags(:,tt) = [params.desat_flag; params.sim.mode_code];
       end
    end
 end

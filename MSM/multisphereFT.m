@@ -40,15 +40,11 @@ n2 = size(SPHS2,2);
 n = n1 + n2; 
 
 % rotate positions of spheres according to DCMs
-% Suggested fix:
-% r is the position of body 2 relative to body 1.
-% If you want to enforce that convention explicitly, keep body 1 at its
-% rotated origin and translate body 2 by r.
+% r is the position of body 2 relative to body 1, so body 1 stays at its
+% rotated origin and body 2 is translated by r.
 SPHS1t = SPHS1;
-SPHS1t(1:3,:) = C1*(SPHS1(1:3,:)); 
-SPHS2(1:3,:) = C2*(SPHS2(1:3,:) + r*ones(1,n2)); %
-% Suggested one-line change to try:
-% SPHS2(1:3,:) = C2*(SPHS2(1:3,:)) + r*ones(1,n2); %
+SPHS1t(1:3,:) = C1*(SPHS1(1:3,:)) + r*ones(1,n1);
+SPHS2(1:3,:) = C2*(SPHS2(1:3,:));
 
 % build matrix with all spheres
 SPHS = [SPHS1t SPHS2];
