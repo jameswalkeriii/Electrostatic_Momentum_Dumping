@@ -14,18 +14,18 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
                        0.86 0.95 0.86;
                        0.96 0.86 0.86];
         
-        for i = 1:length(results.Htot)
-            normH(i) = norm(results.Htot(:,i));
+        for i = 1:length(results.Htot_servicer)
+            normH(i) = norm(results.Htot_servicer(:,i));
         end
         
-        C2_intial = MRP2C(results.Xtot(1:3,1));
+        C2_intial = MRP2C(results.Xtot_servicer(1:3,1));
         
         intial_sph_loc = params.servicer.N_spheres*0;
         for i = 1:length(params.servicer.N_spheres)
             intial_sph_loc(1:3,i) = C2_intial*params.servicer.N_spheres(1:3,i);
             intial_sph_loc(4,i) = params.servicer.N_spheres(4,i);
         end
-        C2_end = MRP2C(results.Xtot(1:3,end));
+        C2_end = MRP2C(results.Xtot_servicer(1:3,end));
         final_sph_loc = params.servicer.N_spheres*0;
         for i = 1:length(params.servicer.N_spheres)
             final_sph_loc(1:3,i) = C2_end*params.servicer.N_spheres(1:3,i);
@@ -34,16 +34,16 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(1:3,:), false))
-        plot(time_hours,results.Xtot(1:3,:),'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(1:3,:), false))
+        plot(time_hours,results.Xtot_servicer(1:3,:),'Linewidth',2)
         xlabel('Time (hours)')
         ylabel('MRP Components')
         xlim([time_hours(1), time_hours(end)])
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.normBN, false))
-        plot(time_hours,results.normBN,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.normBN_servicer, false))
+        plot(time_hours,results.normBN_servicer,'Linewidth',2)
         xlabel('Time (hours)')
         ylabel('MRP Magnitude')
         xlim([time_hours(1), time_hours(end)])
@@ -52,8 +52,8 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(7:9,:)*60*2*pi, false))
-        plot(time_hours,results.Xtot(7:9,:)*60*2*pi,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60*2*pi, false))
+        plot(time_hours,results.Xtot_servicer(7:9,:)*60*2*pi,'Linewidth',2)
         xlabel('Time (hours)','Fontsize',14)
         ylabel('Reaction Wheel Speeds (rpm)','Fontsize',14)
         legend('Om\_1','Om\_2','Om\_3','Fontsize',14)
@@ -61,8 +61,8 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.reftot(1:3,:), false))
-        plot(time_hours,results.reftot(1:3,:),'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.reftot_servicer(1:3,:), false))
+        plot(time_hours,results.reftot_servicer(1:3,:),'Linewidth',2)
         xlabel('Time (hours)')
         ylabel('Desired Attitude (MRPs)')
         xlim([time_hours(1), time_hours(end)])
@@ -70,22 +70,22 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         figure
         subplot(2,1,1)
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.aterrtot, true))
-        semilogy(time_hours,results.aterrtot,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.aterrtot_servicer, true))
+        semilogy(time_hours,results.aterrtot_servicer,'Linewidth',2)
         ylabel('Magnitude sigma B/R ','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
         subplot(2,1,2)
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot, true))
-        semilogy(time_hours,results.werrtot,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot_servicer, true))
+        semilogy(time_hours,results.werrtot_servicer,'Linewidth',2)
         xlabel('Time (hours)','Fontsize',14)
         ylabel('Magnitude omega B/R ','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot(4:6,:), false))
-        plot(time_hours,results.Xtot(4:6,:),'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(4:6,:), false))
+        plot(time_hours,results.Xtot_servicer(4:6,:),'Linewidth',2)
         xlabel('Time (hours)','Fontsize',14)
         ylabel('Angular Velocity','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
@@ -118,10 +118,10 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         
         figure 
         hold on
-        addModeBands(gca, results.Ttot/3600/24, mode_hist, mode_colors, calcPlotLimits(results.Xtot(7:9,:)*60/(2*pi), false))
-        plot(results.Ttot/3600/24,results.Xtot(7,:)*60/(2*pi),'Linewidth',2)
-        plot(results.Ttot/3600/24,results.Xtot(8,:)*60/(2*pi),'Linewidth',2)
-        plot(results.Ttot/3600/24,results.Xtot(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
+        addModeBands(gca, results.Ttot/3600/24, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
+        plot(results.Ttot/3600/24,results.Xtot_servicer(7,:)*60/(2*pi),'Linewidth',2)
+        plot(results.Ttot/3600/24,results.Xtot_servicer(8,:)*60/(2*pi),'Linewidth',2)
+        plot(results.Ttot/3600/24,results.Xtot_servicer(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
         xlabel('Time (days)','Fontsize',14,'Fontname','Times New Roman')
         ylabel('RW Velocity (rpm)','Fontsize',14,'Fontname','Times New Roman')
         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
@@ -138,8 +138,8 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_tot, false))
-        plot(time_hours,results.L_e_tot,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_servicer_tot, false))
+        plot(time_hours,results.L_e_servicer_tot,'Linewidth',2)
         ylabel('Electrostatic Torques (Nm)','Fontsize',14)
         xlabel('Time (hours)','Fontsize',14)
         legend('L\_x','L\_y','L\_z','Fontsize',14)

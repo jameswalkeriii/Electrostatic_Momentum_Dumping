@@ -11,7 +11,7 @@ clear;
     
     debris_N_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
     
-    debris_N_MI = [1000; 1000; 1000].*eye(3)*10000; % [kg m2] SSL Moment of Inertia From email with Dan
+    debris_N_MI = [1000; 1000; 1000].*eye(3); % [kg m2] SSL Moment of Inertia From email with Dan
 
     sphLoad1 = load('SSL1300_bus.mat');% Loading MSM model for SSL-1300 geometry to match source link: body 2.8 x 2.1 x 2.0 m, panels 14 x 2.3 m each
 
@@ -158,7 +158,7 @@ D_w_BN = [0;0;0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 50*3600;
+    tn = 300*3600;
 % Step size (s)
     dt = 1;
  
@@ -169,7 +169,7 @@ params0 = params;
 % Intial wheel speeds 
 Om_0 = [0;0;0];
 
-params.wheel_speed_threshold = 20;%5000/60*(2*pi);
+params.wheel_speed_threshold = 1500/60*(2*pi);
 
 % [data_anti,~,~] = find_anti_torque(H,data);
 
