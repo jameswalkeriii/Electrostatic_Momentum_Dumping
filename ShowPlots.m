@@ -13,7 +13,8 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
                        1.00 0.93 0.80;
                        0.86 0.95 0.86;
                        0.96 0.86 0.86];
-        
+                   
+        normH = zeros(1,length(results.Htot_servicer));
         for i = 1:length(results.Htot_servicer)
             normH(i) = norm(results.Htot_servicer(:,i));
         end
@@ -130,8 +131,8 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(normH, false))
-        plot(time_hours,normH,'Linewidth',2)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(vecnorm(results.Htot_servicer,2,1), false))
+        plot(time_hours,vecnorm(results.Htot_servicer,2,1),'Linewidth',2)
         ylabel('Angular Momentum (Nms)','Fontsize',14,'Fontname','Times New Roman')
         xlabel('Time (hours)','Fontsize',14,'Fontname','Times New Roman')
         xlim([time_hours(1), time_hours(end)])

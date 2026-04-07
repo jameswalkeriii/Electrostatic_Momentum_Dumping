@@ -87,25 +87,25 @@ params.V = [params.debris.voltage,params.servicer.voltage];
 params.servicer.SN = [1,0,0; 0,1,0;0,0,1];
 params.debris.DN = [1,0,0; 0,1,0;0,0,1];
 
-%Initial position plot
-clf(figure(1))
-figure(1)
-hold on
-set(gca,'FontName','times')
-makeSphsPicture_2craft(params.debris.N_spheres, params.servicer.N_spheres,...
-[0 0 0], params.servicer.S_COM + params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
-axis equal
-xlim([-3,50])
-ylim([-17,17])
-zlim([-12,12])
-c=colorbar;
-c.Label.String = 'Surface Charge Density (nC/m^2)';
-xlabel('X [m]')
-ylabel('Y [m]')
-zlabel('Z [m]')
-
-view(3)
-hold off
+% %Initial position plot
+% clf(figure(1))
+% figure(1)
+% hold on
+% set(gca,'FontName','times')
+% makeSphsPicture_2craft(params.debris.N_spheres, params.servicer.N_spheres,...
+% [0 0 0], params.servicer.S_COM + params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
+% axis equal
+% xlim([-3,50])
+% ylim([-17,17])
+% zlim([-12,12])
+% c=colorbar;
+% c.Label.String = 'Surface Charge Density (nC/m^2)';
+% xlabel('X [m]')
+% ylabel('Y [m]')
+% zlabel('Z [m]')
+% 
+% view(3)
+% hold off
 
 %% Computing Torques for all servicer Orientations (Stationary Target)
 
@@ -158,7 +158,7 @@ D_w_BN = [0;0;0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 300*3600;
+    tn = 60*3600;
 % Step size (s)
     dt = 1;
  

@@ -26,17 +26,18 @@ params.sim.X_serv = X_serv; % store state of the servicer
 params.sim.X_deb = X_deb; % store state of the target
 
 for i_tt = 1:length(Ttot)
-  
-    t = Ttot(i_tt); % Determine current time
-    if t == 50*3600
-        ddd = 0;
-    end
+    
+    t = Ttot(i_tt);
+    
+    % Current attitude and angular velocity
+    sig_SN = X_serv(1:3);
+    S_w_SN = X_serv(4:6);
+    SN = MRP2C(sig_SN);
     
 %%%% Desate Mode Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % If the servicer is not in desat, check reaction wheel speeds
     RW_wheel_speeds = abs(X_serv(6+1:6+N,1));
-    
     if params.desat_flag == 0
         for i_RW = 1:N
             if RW_wheel_speeds(i_RW) > params.wheel_speed_threshold
@@ -55,12 +56,13 @@ for i_tt = 1:length(Ttot)
 %                 [data_anti,~,~] = find_anti_torque(B_L2,data);
 %                 params.sim.sig_RN = C2MRP(data_anti.C2);
                 params.sim.sig_RN = [0,0,1]';
+                R_w_RN = [0,0,0]';
+                R_w_RN_dot = [0,0,0]';
+                RN = MRP2C(params.sim.sig_RN);
                 params.attitude_mode = "Slewing_To_Second_Attitude";
                 
             case "Slewing_To_Second_Attitude"
 %                 params.V = [0,0];
-                RN = MRP2C(params.sim.sig_RN);
-                SN = MRP2C(sig_SN);
                 SR = SN*RN';
                 sig_SR = C2MRP(SR);
                 theta_SR = 4*atan(norm(sig_SR));
@@ -75,12 +77,13 @@ for i_tt = 1:length(Ttot)
 %                 if dot(X_serv(7:9)/norm(X_serv(7:9)),L_serv/norm(L_serv)) > 0 as the target rotates, the torque changes which would take you out of this location without desat being finished
                  if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0
                     params.sim.sig_RN = [0;0;0];
+                    R_w_RN = [0,0,0]';
+                    R_w_RN_dot = [0,0,0]';
+                    RN = MRP2C(params.sim.sig_RN);
                     params.attitude_mode = "Slewing_To_First_Attitude";
                 end
             case "Slewing_To_First_Attitude"
 %                 params.V = [0,0];
-                RN = MRP2C(params.sim.sig_RN);
-                SN = MRP2C(sig_SN);
                 SR = SN*RN';
                 sig_SR = C2MRP(SR);
                 theta_SR = 4*atan(norm(sig_SR));
@@ -91,6 +94,13 @@ for i_tt = 1:length(Ttot)
                 end
                 
         end
+        
+    else
+        params.sim.sig_RN = [0,0,0]';
+        R_w_RN = [0,0,0]';
+        R_w_RN_dot = [0,0,0]';
+        RN = MRP2C(params.sim.sig_RN);
+
         
     end
 
@@ -107,14 +117,6 @@ for i_tt = 1:length(Ttot)
     
 %%%% Compute required control %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-    R_w_RN = [0,0,0]';
-    R_w_RN_dot = [0,0,0]';
-    
-    sig_SN = X_serv(1:3);
-    S_w_SN = X_serv(4:6);
-    
-    RN = MRP2C(params.sim.sig_RN);
-    SN = MRP2C(sig_SN);
     SR = SN*RN';
     sig_SR = C2MRP(SR);
 
@@ -268,7 +270,7 @@ for i_tt = 1:length(Ttot)
         
         fig = figure(100);
         clf(fig)
-        set(fig,'Position',[50 50 1000 500])
+        set(fig,'Position',[50 50 1200 600])
         
         subplot(2,4,[1,2,5,6])
         hold on

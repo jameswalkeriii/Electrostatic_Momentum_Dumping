@@ -27,8 +27,8 @@ classdef storage
            obj.Xtot_debris = zeros(6,tn);
            obj.Htot_servicer = zeros(3,tn);
            obj.Htot_debris = zeros(3,tn);
-           obj.aterrtot_servicer = zeros(3,tn);
-           obj.werrtot_servicer = zeros(3,tn);
+           obj.aterrtot_servicer = zeros(1,tn);
+           obj.werrtot_servicer = zeros(1,tn);
            obj.ustot_servicer = zeros(3,tn);
            obj.Lrtot_servicer = zeros(3,tn);
            obj.L_e_servicer_tot = zeros(3,tn);
@@ -37,7 +37,7 @@ classdef storage
            obj.reftot_servicer = zeros(3,tn);
            obj.N_rvec_tot = zeros(3,tn);
            obj.flags = zeros(2,tn);
-           obj.debris_ang_vel = zeros(1,tn);
+           obj.debris_ang_vel = zeros(3,tn);
            
        end
       
@@ -56,7 +56,7 @@ classdef storage
          obj.reftot_servicer(:,tt) = params.sim.sig_RN;
          obj.N_rvec_tot(:,tt) = params.sim.N_rvec_m;
          obj.flags(:,tt) = [params.desat_flag; params.sim.mode_code];
-         obj.debris_ang_vel(:,tt) = norm(params.sim.X_deb(4:6));
+         obj.debris_ang_vel(:,tt) = params.sim.X_deb(4:6);
       end
    end
 end

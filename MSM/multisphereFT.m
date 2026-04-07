@@ -45,7 +45,6 @@ n = n1 + n2;
 SPHS1t = SPHS1;
 SPHS1t(1:3,:) = C1*(SPHS1(1:3,:));
 SPHS2(1:3,:) = C2*(SPHS2(1:3,:)) + r*ones(1,n2);
-% TODO: Pretty sure these two vectors are in different reference frames
 
 % build matrix with all spheres
 SPHS = [SPHS1t SPHS2];
@@ -61,7 +60,7 @@ relPos = reshape(relPos, n, n); %distance between each sphere: wil fill off-diag
 
 %C = 1/k*[Rsc1*(1+Rsc2/sep), -Rsc1*Rsc2/sep; -Rsc1*Rsc2/sep Rsc2*(1+Rsc1/sep)];
 
-Cinv = relPos + SPHS(4,:).*eye(n);
+C = relPos + SPHS(4,:).*eye(n);
 
 % check if distance between sphere1 and 2 is larger than r1 && r2
 lapCheck = relPos(n1+1:end, 1:n1) - 1.1*(SPHS1(4,:)+SPHS2(4,:)');
@@ -73,7 +72,7 @@ if any(lapCheck < 0, 'all')
     disp('Overlapping spheres')
 end
 
-Cinv = Cinv.^-1;
+Cinv = C.^-1;
 
 % Find charge on each sphere
 Vs = [V(1)*ones(n1,1); V(2)*ones(n2,1)];
