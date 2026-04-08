@@ -16,7 +16,7 @@ classdef storage
         N_rvec_tot
         flags
         debris_ang_vel
-        
+        dot_prods
     end
 
    methods
@@ -38,6 +38,7 @@ classdef storage
            obj.N_rvec_tot = zeros(3,tn);
            obj.flags = zeros(2,tn);
            obj.debris_ang_vel = zeros(3,tn);
+           obj.dot_prods = zeros(1,tn);
            
        end
       
@@ -57,6 +58,7 @@ classdef storage
          obj.N_rvec_tot(:,tt) = params.sim.N_rvec_m;
          obj.flags(:,tt) = [params.desat_flag; params.sim.mode_code];
          obj.debris_ang_vel(:,tt) = params.sim.X_deb(4:6);
+         obj.dot_prods(:,tt) = params.sim.dot_prod;
       end
    end
 end

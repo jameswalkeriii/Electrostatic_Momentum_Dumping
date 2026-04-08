@@ -28,11 +28,9 @@ params.sim.X_deb = X_deb; % store state of the target
 % TODO: Not always true
 params.sim.H = [0,0,0];
 for i_tt = 1:length(Ttot)
+    
+    t = Ttot(i_tt);
   
-    t = Ttot(i_tt); % Determine current time
-    if t == 50*3600
-        ddd = 0;
-    end
     
 %%%% Desate Mode Check %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
@@ -56,9 +54,9 @@ for i_tt = 1:length(Ttot)
 %                 params.V = [10000,-10000];
 %                 [data_anti,~,~] = find_anti_torque(B_L2,data);
 %                 params.sim.sig_RN = C2MRP(data_anti.C2);
-                params.sim.sig_RN = [1,0,0]';
+                params.sim.sig_RN = [0,0,1]';
                 params.attitude_mode = "Slewing_To_Second_Attitude";
-%                 X_serv(1:3) = params.sim.sig_RN;
+                X_serv(1:3) = params.sim.sig_RN;
                 
             case "Slewing_To_Second_Attitude"
 %                 params.V = [0,0];
@@ -76,11 +74,11 @@ for i_tt = 1:length(Ttot)
             case "Second Attitude"
 %                 params.V = [10000,-10000];
 %                 if dot(X_serv(7:9)/norm(X_serv(7:9)),L_serv/norm(L_serv)) > 0 as the target rotates, the torque changes which would take you out of this location without desat being finished
-%                 if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0 flips when one of the reaction wheels starts increasing in speed
-                 if (normH-normHm1) > 0
+                if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0 %flips when one of the reaction wheels starts increasing in speed
+%                  if (normH-normHm1) > 0
                     params.sim.sig_RN = [0;0;0];
                     params.attitude_mode = "Slewing_To_First_Attitude";
-%                     X_serv(1:3) = params.sim.sig_RN;
+                    X_serv(1:3) = params.sim.sig_RN;
                 end
             case "Slewing_To_First_Attitude"
 %                 params.V = [0,0];
@@ -150,7 +148,7 @@ for i_tt = 1:length(Ttot)
     % Convert each electrostatic torque into the corresponding body frame
     % used by each rigid-body EOM.
     S_L_serv = SN*N_L_elect_serv;
-    D_L_deb = DN*N_L_elect_debris;        
+    D_L_deb = DN*N_L_elect_debris;  
 
     params.sim.Lr = -K*sig_SR - P*(S_w_SR) - I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
     tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv;
@@ -237,6 +235,8 @@ for i_tt = 1:length(Ttot)
     params.sim.H = HB + Hw;
     normH = norm(params.sim.H);
     H_deb = params.debris.D_MI*w_DN;
+    
+    params.sim.dot_prod = dot(S_L_serv/norm(S_L_serv),params.sim.H/norm(params.sim.H));
 
     params.sim.H_deb = H_deb;
     
@@ -346,19 +346,18 @@ for i_tt = 1:length(Ttot)
         title('Servicer Reaction Wheel Speeds')
         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Location','best')
         xlim([results.Ttot(1), results.Ttot(end)]/3600)
+%         ylim([-1.1*params.wheel_speed_threshold,params.wheel_speed_threshold*1.1])
         
         subplot(2,6,[9,10])
         hold on
-        L_e_hist = results.L_e_servicer_tot(:,1:i_tt);
-        plot(results.Ttot(1:i_tt)/3600,L_e_hist(1,:),'LineWidth',2)
-        plot(results.Ttot(1:i_tt)/3600,L_e_hist(2,:),'LineWidth',2)
-        plot(results.Ttot(1:i_tt)/3600,L_e_hist(3,:),'LineWidth',2)
+        dot_prod_hist = results.dot_prods(:,1:i_tt);
+        plot(results.Ttot(1:i_tt)/3600,dot_prod_hist,'LineWidth',2)
         set(gca,'FontName','times')
         xlabel('Time (hours)')
-        ylabel('Torque (Nm)')
-        title('Body Frame $L_{eleco}$')
-        legend('X','Y','Z','Location','best')
+        ylabel('dot($^BH_{serv}$,$^BL_{serv})$')
+        title('H $L_e$ angle')
         xlim([results.Ttot(1), results.Ttot(end)]/3600)
+        ylim([-1,1])
         
         subplot(2,6,[11,12])
         hold on
