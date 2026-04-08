@@ -48,8 +48,8 @@ params.I1 = [1000; 1000; 1000].*eye(3);
 sphLoad1 = load('SSL1300_bus.mat');
 params.SPHS1 = sphLoad1.SPHSb;
 
-% Loading MSM model for GOES-R
-sphLoad2 = load('GOESR_bus.mat');
+% Loading MSM model for GOES-R without boom
+sphLoad2 = load('GOESR_bus_noboom.mat');
 params.SPHS2 = sphLoad2.SPHSb;
 
 % Setting Intial Position in the Hill Frame
@@ -1361,4 +1361,3 @@ for k = 1:length(F)
 end
 close(writerObj);
 end
-

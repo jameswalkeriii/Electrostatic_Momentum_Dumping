@@ -1,8 +1,14 @@
 %% Electrostatic Momentem Management Base Code
 clear;
 
-% TODO: voltages are acting opposite what they should be
- 
+% Add local code folders to the MATLAB path
+addpath(genpath('MSM'))
+addpath(genpath('functions'))
+
+set(0,'defaulttextinterpreter','latex')
+set(0, 'defaultAxesTickLabelInterpreter','latex')
+set(0, 'defaultLegendInterpreter','latex');
+set(0,'defaultAxesFontSize',16)
 % Load MSM models and Mass properties
 
 % Parameters for SSL-1300 the acting target/debris
@@ -11,7 +17,7 @@ clear;
     
     debris_N_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
     
-    debris_N_MI = [1000; 1000; 1000].*eye(3); % [kg m2] SSL Moment of Inertia From email with Dan
+    debris_N_MI = [1000; 1000; 1000].*eye(3)*1000000; % [kg m2] SSL Moment of Inertia From email with Dan
 
     sphLoad1 = load('SSL1300_bus.mat');% Loading MSM model for SSL-1300 geometry to match source link: body 2.8 x 2.1 x 2.0 m, panels 14 x 2.3 m each
 
@@ -32,7 +38,7 @@ clear;
     servicer_N_MI = DCM_SW2B*DCM_IB*SW_MI; % in body frame
     servicer_N_COM = DCM_SW2B*SW_COM + [-2 0 0]'; % in body frame
 
-    sphLoad2 = load('GOESR_bus.mat'); % Loading MSM model for GOES-R
+    sphLoad2 = load('GOESR_bus.mat'); % Loading MSM model for GOES-R without boom
 
     % TODO: What are the offsets with the COM of mass?
 
@@ -158,7 +164,7 @@ D_w_BN = [0;0;0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 300*3600;
+    tn = 100*3600;
 % Step size (s)
     dt = 1;
  
@@ -169,7 +175,7 @@ params0 = params;
 % Intial wheel speeds 
 Om_0 = [0;0;0];
 
-params.wheel_speed_threshold = 1500/60*(2*pi);
+params.wheel_speed_threshold = 500/60*(2*pi);
 
 % [data_anti,~,~] = find_anti_torque(H,data);
 
@@ -182,4 +188,3 @@ results =...
     N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,relative_orientation_EMM_Torques);
 %%
 ShowPlots(params,results,Ttot(end),params.N_rvec_km,true)
-

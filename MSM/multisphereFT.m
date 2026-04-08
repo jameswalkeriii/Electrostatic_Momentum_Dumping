@@ -1,4 +1,4 @@
-function [ F1, F2, L1, L2, qs, overlapFlag] = multisphereFT( SPHS1, SPHS2, r, V, C1, C2, COM1, COM2)
+function [ F1, F2, L1, L2, qs, overlapFlag] = multisphereFT( unrotated_SPHS1, unrotated_SPHS2, N_r_m, V, C1, C2, COM1, COM2)
 % Find force and torque between two MSM bodies
 % Inputs:
 % SPHS1 = [x1 x2 ...
@@ -35,20 +35,21 @@ end
 k = constants.Kc;
 
 % number of spheres in body 1, body 2, total
-n1 = size(SPHS1,2);
-n2 = size(SPHS2,2);
+n1 = size(unrotated_SPHS1,2);
+n2 = size(unrotated_SPHS2,2);
 n = n1 + n2; 
 
 % rotate positions of spheres according to DCMs
 % r is the position of body 2 relative to body 1, so body 1 stays at its
 % rotated origin and body 2 is translated by r.
-SPHS1t = SPHS1;
-SPHS1t(1:3,:) = C1*(SPHS1(1:3,:));
-SPHS2(1:3,:) = C2*(SPHS2(1:3,:)) + r*ones(1,n2);
+SPHS1 = unrotated_SPHS1;
+SPHS2 = unrotated_SPHS2;
+SPHS1(1:3,:) = C1*(unrotated_SPHS1(1:3,:));
+SPHS2(1:3,:) = C2*(unrotated_SPHS2(1:3,:)) + N_r_m*ones(1,n2);
 % TODO: Pretty sure these two vectors are in different reference frames
 
 % build matrix with all spheres
-SPHS = [SPHS1t SPHS2];
+SPHS = [SPHS1 SPHS2];
 
 % Find Cinv matrix
 % needs to evaluate every sphere to find each charge
@@ -64,7 +65,7 @@ relPos = reshape(relPos, n, n); %distance between each sphere: wil fill off-diag
 Cinv = relPos + SPHS(4,:).*eye(n);
 
 % check if distance between sphere1 and 2 is larger than r1 && r2
-lapCheck = relPos(n1+1:end, 1:n1) - 1.1*(SPHS1(4,:)+SPHS2(4,:)');
+lapCheck = relPos(n1+1:end, 1:n1) - 1.1*(unrotated_SPHS1(4,:)+SPHS2(4,:)');
 
 overlapFlag = 0;
 % if any(triu(lapCheck,1) < 0, 'all')
@@ -87,8 +88,8 @@ qs2 = qs(n1+1:end);
 % F = k*q1*q2*r/r^3
 
 %compute distances 
-sph1 = repmat(SPHS1t(1:3,:), 1, size(SPHS2,2));
-sph2 = repelem(SPHS2(1:3,:), 1, size(SPHS1t,2));
+sph1 = repmat(SPHS1(1:3,:), 1, size(SPHS2,2));
+sph2 = repelem(SPHS2(1:3,:), 1, size(SPHS1,2));
 
 relPos = sum((sph1-sph2).^2,1).^0.5;
 relVec = sph1-sph2;
@@ -105,8 +106,8 @@ F2 = -F1; % Force should be equal but opposite
 % Find torque
 % L = r X f
 % compute distances RELATIVE TO CENTER OF MASSES 
-sph1 = repmat(SPHS1t(1:3,:) + COM1, 1, size(SPHS2,2));
-sph22 = repelem(SPHS2(1:3,:) + COM2, 1, size(SPHS1t,2));
+sph1 = repmat(SPHS1(1:3,:) + COM1, 1, size(SPHS2,2));
+sph22 = repelem(SPHS2(1:3,:) + COM2, 1, size(SPHS1,2));
 
 L1 = sum(cross(sph1,Feach),2); %matches L1 to eps
 L2 = -sum(cross(sph22,Feach),2); % matches L2 to eps-ish

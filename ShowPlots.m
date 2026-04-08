@@ -1,11 +1,5 @@
 function ShowPlots(params,results,ttotal,x0_H,flag) 
 % Set plot parameters
-set(0,'defaulttextinterpreter','latex')
-set(0, 'defaultAxesTickLabelInterpreter','latex')
-set(0, 'defaultLegendInterpreter','latex');
-set(0,'defaultAxesFontSize',16)
-set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'bold') ;
-
     if flag == true
         time_hours = results.Ttot/3600;
         mode_hist = results.flags(2,:);
@@ -21,13 +15,13 @@ set(0,'DefaultAxesTitleFontSizeMultiplier', 1.5,'DefaultAxesTitleFontWeight', 'b
         C2_intial = MRP2C(results.Xtot_servicer(1:3,1));
         
         intial_sph_loc = params.servicer.N_spheres*0;
-        for i = 1:length(params.servicer.N_spheres)
+        for i = 1:size(params.servicer.N_spheres,2)
             intial_sph_loc(1:3,i) = C2_intial*params.servicer.N_spheres(1:3,i);
             intial_sph_loc(4,i) = params.servicer.N_spheres(4,i);
         end
         C2_end = MRP2C(results.Xtot_servicer(1:3,end));
         final_sph_loc = params.servicer.N_spheres*0;
-        for i = 1:length(params.servicer.N_spheres)
+        for i = 1:size(params.servicer.N_spheres,2)
             final_sph_loc(1:3,i) = C2_end*params.servicer.N_spheres(1:3,i);
             final_sph_loc(4,i) = params.servicer.N_spheres(4,i);
         end

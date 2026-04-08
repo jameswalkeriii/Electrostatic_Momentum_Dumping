@@ -25,6 +25,8 @@ percent_check = 0; % Shows how much time is left in the simulations
 params.sim.X_serv = X_serv; % store state of the servicer
 params.sim.X_deb = X_deb; % store state of the target
 
+% TODO: Not always true
+params.sim.H = [0,0,0];
 for i_tt = 1:length(Ttot)
   
     t = Ttot(i_tt); % Determine current time
@@ -54,8 +56,9 @@ for i_tt = 1:length(Ttot)
 %                 params.V = [10000,-10000];
 %                 [data_anti,~,~] = find_anti_torque(B_L2,data);
 %                 params.sim.sig_RN = C2MRP(data_anti.C2);
-                params.sim.sig_RN = [0,0,1]';
+                params.sim.sig_RN = [1,0,0]';
                 params.attitude_mode = "Slewing_To_Second_Attitude";
+%                 X_serv(1:3) = params.sim.sig_RN;
                 
             case "Slewing_To_Second_Attitude"
 %                 params.V = [0,0];
@@ -73,9 +76,11 @@ for i_tt = 1:length(Ttot)
             case "Second Attitude"
 %                 params.V = [10000,-10000];
 %                 if dot(X_serv(7:9)/norm(X_serv(7:9)),L_serv/norm(L_serv)) > 0 as the target rotates, the torque changes which would take you out of this location without desat being finished
-                 if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0
+%                 if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0 flips when one of the reaction wheels starts increasing in speed
+                 if (normH-normHm1) > 0
                     params.sim.sig_RN = [0;0;0];
                     params.attitude_mode = "Slewing_To_First_Attitude";
+%                     X_serv(1:3) = params.sim.sig_RN;
                 end
             case "Slewing_To_First_Attitude"
 %                 params.V = [0,0];
@@ -138,17 +143,17 @@ for i_tt = 1:length(Ttot)
     
     end
     
-    [D_F_on_debris, S_F_on_serv, D_L_elect_debris, S_L_elect_serv, ~, overlapFlag] = ...
+    [N_F_on_debris, N_F_on_serv, N_L_elect_debris, N_L_elect_serv, ~, overlapFlag] = ...
     multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.sim.N_rvec_m, params.V, DN, SN,...
-    params.debris.D_COM, params.servicer.S_COM);
+    DN'*params.debris.D_COM, SN'*params.servicer.S_COM);
     
     % Convert each electrostatic torque into the corresponding body frame
     % used by each rigid-body EOM.
-    L_serv = S_L_elect_serv;
-    L_deb = D_L_elect_debris;        
+    S_L_serv = SN*N_L_elect_serv;
+    D_L_deb = DN*N_L_elect_debris;        
 
-    params.sim.Lr = -K*sig_SR - P*(S_w_SR) + I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
-    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-L_serv;
+    params.sim.Lr = -K*sig_SR - P*(S_w_SR) - I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
+    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv;
 
     us = pinv(Gs)*-params.sim.Lr;
     % Remove Control
@@ -169,16 +174,16 @@ for i_tt = 1:length(Ttot)
 
 %%%% RK4 integrator for the servicing spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Xdot_servicer = N_RW_EOM(X_serv, I_RW, Iws, Gs0, N,us,L_serv);
+    Xdot_servicer = N_RW_EOM(X_serv, I_RW, Iws, Gs0, N,us,S_L_serv);
 
     k1 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_serv+k1/2, I_RW, Iws, Gs0, N,us,L_serv);
+    Xdot_servicer = N_RW_EOM(X_serv+k1/2, I_RW, Iws, Gs0, N,us,S_L_serv);
     
     k2 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_serv+k2/2, I_RW, Iws, Gs0, N,us,L_serv);
+    Xdot_servicer = N_RW_EOM(X_serv+k2/2, I_RW, Iws, Gs0, N,us,S_L_serv);
 
     k3 = Xdot_servicer*dt;
-    Xdot_servicer = N_RW_EOM(X_serv+k3, I_RW, Iws, Gs0, N,us,L_serv);
+    Xdot_servicer = N_RW_EOM(X_serv+k3, I_RW, Iws, Gs0, N,us,S_L_serv);
     k4 = Xdot_servicer*dt;
 
     X_serv = X_serv + 1/6*(k1+2*k2+2*k3+k4);
@@ -192,16 +197,16 @@ for i_tt = 1:length(Ttot)
     
 %%%% RK4 integrator for the Target spacecraft %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Xdot_deb = N_MRP_EOM(X_deb,params.debris.D_MI,L_deb);
+    Xdot_deb = N_MRP_EOM(X_deb,params.debris.D_MI,D_L_deb);
 
     k1 = Xdot_deb*dt;
-    Xdot_deb = N_MRP_EOM(X_deb+k1/2,params.debris.D_MI,L_deb);
+    Xdot_deb = N_MRP_EOM(X_deb+k1/2,params.debris.D_MI,D_L_deb);
     
     k2 = Xdot_deb*dt;
-    Xdot_deb = N_MRP_EOM(X_deb+k2/2,params.debris.D_MI,L_deb);
+    Xdot_deb = N_MRP_EOM(X_deb+k2/2,params.debris.D_MI,D_L_deb);
 
     k3 = Xdot_deb*dt;
-    Xdot_deb = N_MRP_EOM(X_deb+k3,params.debris.D_MI,L_deb);
+    Xdot_deb = N_MRP_EOM(X_deb+k3,params.debris.D_MI,D_L_deb);
     k4 = Xdot_deb*dt;
 
     X_deb = X_deb + 1/6*(k1+2*k2+2*k3+k4);
@@ -228,16 +233,16 @@ for i_tt = 1:length(Ttot)
         ws = dot(S_w_SN,gsi);
         Hw = Hw + Iws*(ws + Om_mat(k))*gsi;
     end
-    
+    normHm1 = norm(params.sim.H);
     params.sim.H = HB + Hw;
-    
+    normH = norm(params.sim.H);
     H_deb = params.debris.D_MI*w_DN;
 
     params.sim.H_deb = H_deb;
     
     params.sim.us = us;
-    params.sim.L_e_serv = L_serv;
-    params.sim.L_e_deb = L_deb;
+    params.sim.L_e_serv = S_L_serv;
+    params.sim.L_e_deb = D_L_deb;
     
  
     results = update_storage(results,i_tt,params);
@@ -247,51 +252,66 @@ for i_tt = 1:length(Ttot)
     if time_left_percentage*100 > percent_check
 
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
-        percent_check = percent_check +2;
-      
+        percent_check = percent_check + 1;
+     
         plotting_servicer = params.servicer.N_spheres;
-        for i = 1:length(params.servicer.N_spheres)
+        for i = 1:size(params.servicer.N_spheres,2)
             sph_loc = params.servicer.N_spheres(1:3,i);
             new_sph_loc_serv = SN*sph_loc;
             plotting_servicer(1:3,i) = new_sph_loc_serv;
         end
         
         plotting_debris = params.debris.N_spheres;
-        for i = 1:length(params.debris.N_spheres)
+        for i = 1:size(params.debris.N_spheres,2)
             sph_loc = params.debris.N_spheres(1:3,i);
             new_sph_loc_deb = DN*sph_loc;
             plotting_debris(1:3,i) = new_sph_loc_deb;
         end
         
-        N_servicer_COM = SN'*params.servicer.S_COM;
-        N_debris_COM = DN'*params.debris.D_COM;
+        N_servicer_COM = SN*params.servicer.S_COM;
+        N_debris_COM = DN*params.debris.D_COM;
         
         fig = figure(100);
         clf(fig)
-        set(fig,'Position',[50 50 1000 500])
+        set(fig,'Position',[50 50 2000 900])
         
-        subplot(2,4,[1,2,5,6])
+        subplot(2,6,[1,2,7,8])
         hold on
         set(gca,'FontName','times')
         makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
-            N_debris_COM,N_servicer_COM+params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
+            [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
 
         quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            10000*L_serv(1),10000*L_serv(2),10000*L_serv(3),'Linewidth',2)
+            10000*N_L_elect_serv(1),10000*N_L_elect_serv(2),10000*N_L_elect_serv(3),'Linewidth',2)
         
         quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            10000*S_F_on_serv(1),10000*S_F_on_serv(2),10000*S_F_on_serv(3),'Linewidth',2)
+            10000*N_F_on_serv(1),10000*N_F_on_serv(2),10000*N_F_on_serv(3),'Linewidth',2)
         
         quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
-            10000*D_L_elect_debris(1),10000*D_L_elect_debris(2),10000*D_L_elect_debris(3),'Linewidth',2)
+            10000*N_L_elect_debris(1),10000*N_L_elect_debris(2),10000*N_L_elect_debris(3),'Linewidth',2)
         
         quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
-            10000*D_F_on_debris(1),10000*D_F_on_debris(2),10000*D_F_on_debris(3),'Linewidth',2)
+            10000*N_F_on_debris(1),10000*N_F_on_debris(2),10000*N_F_on_debris(3),'Linewidth',2)
+        
+        quiver3(10,0,0,3,0,0,'r','Linewidth',1)
+        quiver3(10,0,0,0,3,0,'b','Linewidth',1)
+        quiver3(10,0,0,0,0,3,'g','Linewidth',1)
+        
+        S_X = 3*SN*[1;0;0];
+        S_Y = 3*SN*[0;1;0];
+        S_Z = 3*SN*[0;0;1];
+        
+        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+            S_X(1),S_X(2),S_X(3),'r','Linewidth',1)
+        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+            S_Y(1),S_Y(2),S_Y(3),'b','Linewidth',1)
+        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+            S_Z(1),S_Z(2),S_Z(3),'g','Linewidth',1)
         
         axis equal
-        xlim([-3,50])
-        ylim([-17,17])
-        zlim([-12,12])
+        xlim([-20,50])
+        ylim([-20,20])
+        zlim([-20,20])
 %         c=colorbar;
 %         c.Label.String = 'Surface Charge Density (nC/m^2)';
         xlabel('X [m]')
@@ -302,7 +322,7 @@ for i_tt = 1:length(Ttot)
         view(3)
         hold off
 
-        subplot(2,4,[3,4])
+        subplot(2,6,[3,4])
         H_hist = vecnorm(results.Htot_servicer(:,1:i_tt),2,1);
         plot(results.Ttot(1:i_tt)/3600,H_hist,'LineWidth',2)
         box on
@@ -312,13 +332,44 @@ for i_tt = 1:length(Ttot)
         title('Angular Momentum History')
         xlim([results.Ttot(1), results.Ttot(end)]/3600)
         
-        subplot(2,4,[7,8])
-        debris_w_hist = vecnorm(results.debris_ang_vel(:,1:i_tt),2,1);
-        plot(results.Ttot(1:i_tt)/3600,debris_w_hist,'LineWidth',2)
+        subplot(2,6,[5,6])
+        hold on
+        rw_hist = results.Xtot_servicer(7:9,1:i_tt);
+        plot(results.Ttot(1:i_tt)/3600,rw_hist(1,:),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,rw_hist(2,:),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,rw_hist(3,:),'LineWidth',2)
+        yline(params.wheel_speed_threshold,'--k')
+        yline(-params.wheel_speed_threshold,'--k')
+        set(gca,'FontName','times')
+        xlabel('Time (hours)')
+        ylabel('Wheel Speed (rad/s)')
+        title('Servicer Reaction Wheel Speeds')
+        legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Location','best')
+        xlim([results.Ttot(1), results.Ttot(end)]/3600)
+        
+        subplot(2,6,[9,10])
+        hold on
+        L_e_hist = results.L_e_servicer_tot(:,1:i_tt);
+        plot(results.Ttot(1:i_tt)/3600,L_e_hist(1,:),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,L_e_hist(2,:),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,L_e_hist(3,:),'LineWidth',2)
+        set(gca,'FontName','times')
+        xlabel('Time (hours)')
+        ylabel('Torque (Nm)')
+        title('Body Frame $L_{eleco}$')
+        legend('X','Y','Z','Location','best')
+        xlim([results.Ttot(1), results.Ttot(end)]/3600)
+        
+        subplot(2,6,[11,12])
+        hold on
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(1,1:i_tt),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(2,1:i_tt),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(3,1:i_tt),'LineWidth',2)
         set(gca,'FontName','times')
         xlabel('Time (hours)')
         ylabel('$\omega_{DN}$ (rad/s)')
         title('Debris Angular Velocity')
+        legend('$\omega_x$','$\omega_y$','$\omega_z$','Location','best')
         xlim([results.Ttot(1), results.Ttot(end)]/3600)
         
     end
