@@ -52,11 +52,11 @@ for i_tt = 1:length(Ttot)
             
             case "First Attitude"
 %                 params.V = [10000,-10000];
-%                 [data_anti,~,~] = find_anti_torque(B_L2,data);
-%                 params.sim.sig_RN = C2MRP(data_anti.C2);
-                params.sim.sig_RN = [0,0,1]';
+                [data_anti,~,~] = find_anti_torque(SN'*params.sim.H,data);
+                params.sim.sig_RN = C2MRP(data_anti.C2);
+%                 params.sim.sig_RN = [0.0911;-0.3205;-0.1814];
                 params.attitude_mode = "Slewing_To_Second_Attitude";
-                X_serv(1:3) = params.sim.sig_RN;
+%                 X_serv(1:3) = params.sim.sig_RN;
                 
             case "Slewing_To_Second_Attitude"
 %                 params.V = [0,0];
@@ -73,13 +73,42 @@ for i_tt = 1:length(Ttot)
                 
             case "Second Attitude"
 %                 params.V = [10000,-10000];
-%                 if dot(X_serv(7:9)/norm(X_serv(7:9)),L_serv/norm(L_serv)) > 0 as the target rotates, the torque changes which would take you out of this location without desat being finished
-                if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0 %flips when one of the reaction wheels starts increasing in speed
-%                  if (normH-normHm1) > 0
-                    params.sim.sig_RN = [0;0;0];
-                    params.attitude_mode = "Slewing_To_First_Attitude";
-                    X_serv(1:3) = params.sim.sig_RN;
-                end
+%                     if dot(SN'*params.sim.H/norm(SN'*params.sim.H),N_L_elect_serv/norm(N_L_elect_serv)) > 0 %as the target rotates, the torque changes which would take you out of this location without desat being finished
+%                     %if sum(sign(X_serv(6+1:6+N,1)) ~= sign(params.wheel_speed_signs)) > 0 %flips when one of the reaction wheels starts increasing in speed
+%                    % if (normH-normHm1) > 0
+%                         [data_anti,~,~] = find_anti_torque(SN'*params.sim.H,data);
+%                         params.sim.sig_RN = C2MRP(data_anti.C2);
+%                         %                 params.sim.sig_RN = [0.0911;-0.3205;-0.1814];
+%                         params.attitude_mode = "Slewing_To_Third_Attitude";
+%                     end
+                    
+                    if dot(SN'*params.sim.H/norm(SN'*params.sim.H),N_L_elect_serv/norm(N_L_elect_serv)) > 0 %as the target rotates, the torque changes which would take you out of this location without desat being finished
+                        params.sim.sig_RN = [0;0;0];
+                        params.attitude_mode = "Slewing_To_First_Attitude";
+                    end
+                
+%             case "Slewing_To_Third_Attitude"
+%                    %params.V = [0,0];
+%                 RN = MRP2C(params.sim.sig_RN);
+%                 SN = MRP2C(sig_SN);
+%                 SR = SN*RN';
+%                 sig_SR = C2MRP(SR);
+%                 theta_SR = 4*atan(norm(sig_SR));
+%                 % Once the spacecraft has reached the desired attitude
+%                 if abs(theta_SR) < 0.0017
+%                     params.attitude_mode = "Third Attitude";
+%                     params.wheel_speed_signs = sign(X_serv(6+1:6+N,1));
+%                 end
+%                 
+%             case "Third Attitude"
+% %                 params.V = [10000,-10000];
+%                     if dot(SN'*params.sim.H/norm(SN'*params.sim.H),N_L_elect_serv/norm(N_L_elect_serv)) > 0 %as the target rotates, the torque changes which would take you out of this location without desat being finished
+%                         params.sim.sig_RN = [0;0;0];
+%                         params.attitude_mode = "Slewing_To_First_Attitude";
+%                     end
+                
+        
+                
             case "Slewing_To_First_Attitude"
 %                 params.V = [0,0];
                 RN = MRP2C(params.sim.sig_RN);
@@ -268,8 +297,8 @@ for i_tt = 1:length(Ttot)
             plotting_debris(1:3,i) = new_sph_loc_deb;
         end
         
-        N_servicer_COM = SN*params.servicer.S_COM;
-        N_debris_COM = DN*params.debris.D_COM;
+        S_servicer_COM = params.servicer.S_COM;
+        D_debris_COM = params.debris.D_COM;
         
         fig = figure(100);
         clf(fig)
@@ -281,16 +310,16 @@ for i_tt = 1:length(Ttot)
         makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
             [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
 
-        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             10000*N_L_elect_serv(1),10000*N_L_elect_serv(2),10000*N_L_elect_serv(3),'Linewidth',2)
         
-        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             10000*N_F_on_serv(1),10000*N_F_on_serv(2),10000*N_F_on_serv(3),'Linewidth',2)
         
-        quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
+        quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
             10000*N_L_elect_debris(1),10000*N_L_elect_debris(2),10000*N_L_elect_debris(3),'Linewidth',2)
         
-        quiver3(N_debris_COM(1),N_debris_COM(2),N_debris_COM(3),...
+        quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
             10000*N_F_on_debris(1),10000*N_F_on_debris(2),10000*N_F_on_debris(3),'Linewidth',2)
         
         quiver3(10,0,0,3,0,0,'r','Linewidth',1)
@@ -301,11 +330,11 @@ for i_tt = 1:length(Ttot)
         S_Y = 3*SN*[0;1;0];
         S_Z = 3*SN*[0;0;1];
         
-        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             S_X(1),S_X(2),S_X(3),'r','Linewidth',1)
-        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             S_Y(1),S_Y(2),S_Y(3),'b','Linewidth',1)
-        quiver3(N_servicer_COM(1)+params.N_rvec_km(1)*1000,N_servicer_COM(2)+params.N_rvec_km(2)*1000,N_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
             S_Z(1),S_Z(2),S_Z(3),'g','Linewidth',1)
         
         axis equal

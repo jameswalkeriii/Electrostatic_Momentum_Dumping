@@ -4,17 +4,17 @@ function [data_anti,i_anti,tot] = find_anti_torque(H,data)
 anti_parr_check_min = 1;
 data_anti = 0;
 i_anti = 0;
-tot = zeros(length(data),4);
+tot = zeros(length(data),1);
 
 for i = 1:length(data)
     % If the spacecraft are overlapping, then set the value as NaN
     if data{i}.overlapFlag == 0
         % If not, add the sum measure to tot
-        E_torque_Bframe = data{i}.B2_L2;
-        Ang_mom_Bframe = H;
+        E_torque_Nframe = data{i}.N_L_elect_serv;
+        Ang_mom_Nframe = H;
         
-        E_torque_Bframe_dir = E_torque_Bframe/norm(E_torque_Bframe);
-        Ang_mom_Bframe_dir = Ang_mom_Bframe/norm(Ang_mom_Bframe);
+        E_torque_Bframe_dir = E_torque_Nframe/norm(E_torque_Nframe);
+        Ang_mom_Bframe_dir = Ang_mom_Nframe/norm(Ang_mom_Nframe);
         
         tot(i) = dot(E_torque_Bframe_dir,Ang_mom_Bframe_dir);
         
@@ -29,7 +29,7 @@ for i = 1:length(data)
         tot(i,1:4) = NaN;
     end
     
-    if anti_parr_check_min > 0
-        disp('No torques acting opposite the angular momentum')
-    end
+%     if anti_parr_check_min > 0
+%         disp('No torques acting opposite the angular momentum')
+%     end
 end
