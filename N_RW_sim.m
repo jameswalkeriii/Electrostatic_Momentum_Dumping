@@ -53,10 +53,9 @@ for i_tt = 1:length(Ttot)
             case "First Attitude"
 %                 params.V = [10000,-10000];
                 [data_anti,~,~] = find_anti_torque(SN'*params.sim.H,data);
-                params.sim.sig_RN = C2MRP(data_anti.C2);
+                params.sim.sig_RN = C2MRP(data_anti.SN);
 %                 params.sim.sig_RN = [0.0911;-0.3205;-0.1814];
                 params.attitude_mode = "Slewing_To_Second_Attitude";
-%                 X_serv(1:3) = params.sim.sig_RN;
                 
             case "Slewing_To_Second_Attitude"
 %                 params.V = [0,0];
@@ -119,7 +118,7 @@ for i_tt = 1:length(Ttot)
                 if abs(theta_SR) < 0.0017 
                     params.attitude_mode = "First Attitude";
                     params.desat_flag = 0;
-                    params.V = [10000,-10000];
+%                     params.V = [10000,-10000];
                 end
                 
         end
@@ -172,7 +171,7 @@ for i_tt = 1:length(Ttot)
     
     [N_F_on_debris, N_F_on_serv, N_L_elect_debris, N_L_elect_serv, ~, overlapFlag] = ...
     multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.sim.N_rvec_m, params.V, DN, SN,...
-    DN'*params.debris.D_COM, SN'*params.servicer.S_COM);
+    params.debris.N_COM, params.servicer.N_COM);
     
     % Convert each electrostatic torque into the corresponding body frame
     % used by each rigid-body EOM.
@@ -283,22 +282,24 @@ for i_tt = 1:length(Ttot)
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
         percent_check = percent_check + 1;
      
-        plotting_servicer = params.servicer.N_spheres;
-        for i = 1:size(params.servicer.N_spheres,2)
-            sph_loc = params.servicer.N_spheres(1:3,i);
-            new_sph_loc_serv = SN*sph_loc;
-            plotting_servicer(1:3,i) = new_sph_loc_serv;
-        end
+%         plotting_servicer = params.servicer.N_spheres;
+%         for i = 1:size(params.servicer.N_spheres,2)
+%             sph_loc = params.servicer.N_spheres(1:3,i);
+%             new_sph_loc_serv = SN*sph_loc;
+%             plotting_servicer(1:3,i) = new_sph_loc_serv;
+%         end
+%         
+%         plotting_debris = params.debris.N_spheres;
+%         for i = 1:size(params.debris.N_spheres,2)
+%             sph_loc = params.debris.N_spheres(1:3,i);
+%             new_sph_loc_deb = DN*sph_loc;
+%             plotting_debris(1:3,i) = new_sph_loc_deb;
+%         end
         
-        plotting_debris = params.debris.N_spheres;
-        for i = 1:size(params.debris.N_spheres,2)
-            sph_loc = params.debris.N_spheres(1:3,i);
-            new_sph_loc_deb = DN*sph_loc;
-            plotting_debris(1:3,i) = new_sph_loc_deb;
-        end
+        N_H = SN'*params.sim.H;
         
-        S_servicer_COM = params.servicer.S_COM;
-        D_debris_COM = params.debris.D_COM;
+        S_servicer_COM = SN*params.servicer.N_COM + params.N_rvec_km*1000;
+        D_debris_COM = DN*params.debris.N_COM;
         
         fig = figure(100);
         clf(fig)
@@ -307,35 +308,28 @@ for i_tt = 1:length(Ttot)
         subplot(2,6,[1,2,7,8])
         hold on
         set(gca,'FontName','times')
-        makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
-            [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage])
+        makeSphsPicture_2craft(params.debris.N_spheres, params.servicer.N_spheres,...
+            [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage], DN, SN)
 
-        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+        quiver3(S_servicer_COM(1),S_servicer_COM(2),S_servicer_COM(3),...
             10000*N_L_elect_serv(1),10000*N_L_elect_serv(2),10000*N_L_elect_serv(3),'Linewidth',2)
         
-        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            10000*N_F_on_serv(1),10000*N_F_on_serv(2),10000*N_F_on_serv(3),'Linewidth',2)
+        quiver3(S_servicer_COM(1),S_servicer_COM(2),S_servicer_COM(3),...
+            10*N_H(1),10*N_H(2),10*N_H(3),'Linewidth',2)
         
-        quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
-            10000*N_L_elect_debris(1),10000*N_L_elect_debris(2),10000*N_L_elect_debris(3),'Linewidth',2)
         
-        quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
-            10000*N_F_on_debris(1),10000*N_F_on_debris(2),10000*N_F_on_debris(3),'Linewidth',2)
-        
-        quiver3(10,0,0,3,0,0,'r','Linewidth',1)
-        quiver3(10,0,0,0,3,0,'b','Linewidth',1)
-        quiver3(10,0,0,0,0,3,'g','Linewidth',1)
-        
-        S_X = 3*SN*[1;0;0];
-        S_Y = 3*SN*[0;1;0];
-        S_Z = 3*SN*[0;0;1];
-        
-        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            S_X(1),S_X(2),S_X(3),'r','Linewidth',1)
-        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            S_Y(1),S_Y(2),S_Y(3),'b','Linewidth',1)
-        quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
-            S_Z(1),S_Z(2),S_Z(3),'g','Linewidth',1)
+%         quiver3(S_servicer_COM(1)+params.N_rvec_km(1)*1000,S_servicer_COM(2)+params.N_rvec_km(2)*1000,S_servicer_COM(3)+params.N_rvec_km(3)*1000,...
+%             10000*N_F_on_serv(1),10000*N_F_on_serv(2),10000*N_F_on_serv(3),'Linewidth',2)
+%         
+%         quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
+%             10000*N_L_elect_debris(1),10000*N_L_elect_debris(2),10000*N_L_elect_debris(3),'Linewidth',2)
+%         
+%         quiver3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),...
+%             10000*N_F_on_debris(1),10000*N_F_on_debris(2),10000*N_F_on_debris(3),'Linewidth',2)
+%         
+        scatter3(D_debris_COM(1),D_debris_COM(2),D_debris_COM(3),20,'k','filled')
+        scatter3(S_servicer_COM(1),S_servicer_COM(2),S_servicer_COM(3),20,'k','filled')
+
         
         axis equal
         xlim([-20,50])

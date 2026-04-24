@@ -45,6 +45,7 @@ n = n1 + n2;
 SPHS1 = unrotated_SPHS1;
 SPHS2 = unrotated_SPHS2;
 SPHS1(1:3,:) = C1*(unrotated_SPHS1(1:3,:));
+SPHS2b(1:3,:) = C2*(unrotated_SPHS2(1:3,:));
 SPHS2(1:3,:) = C2*(unrotated_SPHS2(1:3,:)) + N_r_m*ones(1,n2);
 % TODO: Pretty sure these two vectors are in different reference frames
 
@@ -106,8 +107,8 @@ F2 = -F1; % Force should be equal but opposite
 % Find torque
 % L = r X f
 % compute distances RELATIVE TO CENTER OF MASSES 
-sph1 = repmat(SPHS1(1:3,:) + COM1, 1, size(SPHS2,2));
-sph22 = repelem(SPHS2(1:3,:) + COM2, 1, size(SPHS1,2));
+sph1 = repmat(SPHS1(1:3,:) - C1*COM1, 1, size(SPHS2,2));
+sph22 = repelem(SPHS2(1:3,:) - (C2*COM2 + N_r_m), 1, size(SPHS1,2));
 
 L1 = sum(cross(sph1,Feach),2); %matches L1 to eps
 L2 = -sum(cross(sph22,Feach),2); % matches L2 to eps-ish

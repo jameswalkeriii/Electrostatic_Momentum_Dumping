@@ -13,12 +13,12 @@ for i = 1:length(data)
         E_torque_Nframe = data{i}.N_L_elect_serv;
         Ang_mom_Nframe = H;
         
-        E_torque_Bframe_dir = E_torque_Nframe/norm(E_torque_Nframe);
-        Ang_mom_Bframe_dir = Ang_mom_Nframe/norm(Ang_mom_Nframe);
+        E_torque_Nframe_dir = E_torque_Nframe/norm(E_torque_Nframe);
+        Ang_mom_Nframe_dir = Ang_mom_Nframe/norm(Ang_mom_Nframe);
         
-        tot(i) = dot(E_torque_Bframe_dir,Ang_mom_Bframe_dir);
+        tot(i) = dot(E_torque_Nframe_dir,Ang_mom_Nframe_dir);
         
-        
+            
         if tot(i) < anti_parr_check_min
             clear data_anti
             data_anti = data{i};

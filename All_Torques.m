@@ -16,13 +16,22 @@ for y = 1:n
         for r = 1:n
             roll = range_roll(r);
             EA = [yaw,pitch,roll];
-            SN = Euler3212C(EA);
+%             if EA(1) == 0
+%                 if EA(2) == 0 
+%                     if EA(3) > pi-.001
+%                         ddd=0;
+%                     elseif EA(3) >0
+%                         ddd = 0;
+%                     end
+%                 end
+%             end
+            SN = Euler3212C(EA)';
             [N_F_on_debris, N_F_on_serv, N_L_elect_debris, N_L_elect_serv, qs, overlapFlag] = ...
                 multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.N_rvec_km*1000,...
-                params.V, eye(3), SN, params.debris.D_COM, SN'*params.servicer.S_COM);
+                params.V, eye(3), SN, params.debris.N_COM, params.servicer.N_COM);
             data{i}.EA = EA;
-            data{i}.C2 = SN;
-            data{i}.MRP = C2MRP(SN');
+            data{i}.SN = SN;
+            data{i}.MRP = C2MRP(SN);
             data{i}.N_F_on_debris = N_F_on_debris;
             data{i}.N_F_on_serv = N_F_on_serv;
             data{i}.N_L_elect_debris = N_L_elect_debris;

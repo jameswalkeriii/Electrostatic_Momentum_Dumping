@@ -113,13 +113,13 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         figure 
         hold on
         addModeBands(gca, results.Ttot/3600/24, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
-        plot(results.Ttot/3600/24,results.Xtot_servicer(7,:)*60/(2*pi),'Linewidth',2)
-        plot(results.Ttot/3600/24,results.Xtot_servicer(8,:)*60/(2*pi),'Linewidth',2)
-        plot(results.Ttot/3600/24,results.Xtot_servicer(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
-        xlabel('Time (days)','Fontsize',14,'Fontname','Times New Roman')
+        plot(results.Ttot/3600,results.Xtot_servicer(7,:)*60/(2*pi),'Linewidth',2)
+        plot(results.Ttot/3600,results.Xtot_servicer(8,:)*60/(2*pi),'Linewidth',2)
+        plot(results.Ttot/3600,results.Xtot_servicer(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
+        xlabel('Time (hrs)','Fontsize',14,'Fontname','Times New Roman')
         ylabel('RW Velocity (rpm)','Fontsize',14,'Fontname','Times New Roman')
         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
-        xlim([0,results.Ttot(end)/3600/24])
+        xlim([0,results.Ttot(end)/3600])
         
         
         figure
