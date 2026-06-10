@@ -1,6 +1,6 @@
 % Computing all the torque vectors generated between two charged
 % spacecraft for all orientations
-function [data,Ls,sigs,EAs] = All_Torques(params,n)
+function [data,Ls,EAs] = All_Torques(params,n)
 range_yaw = linspace(-pi,pi,n);
 range_pitch = linspace(-pi/2,pi/2,n);
 range_roll = linspace(-pi,pi,n);
@@ -8,6 +8,8 @@ i = 1;
 Ls = zeros(n^3,3);
 data = cell(1,n^3);
 EAs = zeros(n^3,3);
+
+ND = eye(3);
 
 for y = 1:n
     yaw = range_yaw(y);
@@ -25,11 +27,13 @@ for y = 1:n
 %                     end
 %                 end
 %             end
-            SN = Euler3212C(EA)';
+            SN = Euler3212C(EA);
+            NS = SN';
             [N_F_on_debris, N_F_on_serv, N_L_elect_debris, N_L_elect_serv, qs, overlapFlag] = ...
-                multisphereFT( params.debris.N_spheres, params.servicer.N_spheres, params.N_rvec_km*1000,...
-                params.V, eye(3), SN, params.debris.N_COM, params.servicer.N_COM);
+                multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
+                params.V, ND, NS, params.debris.D_COM, params.servicer.S_COM);
             data{i}.EA = EA;
+            data{i}.NS = NS;
             data{i}.SN = SN;
             data{i}.MRP = C2MRP(SN);
             data{i}.N_F_on_debris = N_F_on_debris;
@@ -38,7 +42,7 @@ for y = 1:n
             data{i}.N_L_elect_serv = N_L_elect_serv;
             data{i}.overlapFlag = overlapFlag;
             Ls(i,:) = N_L_elect_serv/norm(N_L_elect_serv);
-            sigs(i,:) = C2MRP(Euler3212C(EA)');
+%             sigs(i,:) = C2MRP(Euler3212C(EA));
             EAs(i,:) = EA;
             i = i+1;
         end

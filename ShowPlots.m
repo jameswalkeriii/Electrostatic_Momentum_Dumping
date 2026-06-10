@@ -14,16 +14,16 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         
         C2_intial = MRP2C(results.Xtot_servicer(1:3,1));
         
-        intial_sph_loc = params.servicer.N_spheres*0;
-        for i = 1:size(params.servicer.N_spheres,2)
-            intial_sph_loc(1:3,i) = C2_intial*params.servicer.N_spheres(1:3,i);
-            intial_sph_loc(4,i) = params.servicer.N_spheres(4,i);
+        intial_sph_loc = params.servicer.S_spheres*0;
+        for i = 1:size(params.servicer.S_spheres,2)
+            intial_sph_loc(1:3,i) = C2_intial'*params.servicer.S_spheres(1:3,i);
+            intial_sph_loc(4,i) = params.servicer.S_spheres(4,i);
         end
         C2_end = MRP2C(results.Xtot_servicer(1:3,end));
-        final_sph_loc = params.servicer.N_spheres*0;
-        for i = 1:size(params.servicer.N_spheres,2)
-            final_sph_loc(1:3,i) = C2_end*params.servicer.N_spheres(1:3,i);
-            final_sph_loc(4,i) = params.servicer.N_spheres(4,i);
+        final_sph_loc = params.servicer.S_spheres*0;
+        for i = 1:size(params.servicer.S_spheres,2)
+            final_sph_loc(1:3,i) = C2_end'*params.servicer.S_spheres(1:3,i);
+            final_sph_loc(4,i) = params.servicer.S_spheres(4,i);
         end
 
         figure
@@ -112,7 +112,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         
         figure 
         hold on
-        addModeBands(gca, results.Ttot/3600/24, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
+        addModeBands(gca, results.Ttot/3600, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
         plot(results.Ttot/3600,results.Xtot_servicer(7,:)*60/(2*pi),'Linewidth',2)
         plot(results.Ttot/3600,results.Xtot_servicer(8,:)*60/(2*pi),'Linewidth',2)
         plot(results.Ttot/3600,results.Xtot_servicer(9,:)*60/(2*pi),'color',plot_colors.col_4,'Linewidth',2)
@@ -147,7 +147,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         ylabel('Relative Y distance [m]')
         zlabel('Relative Z distance [m]')
         set(gca,'FontName','times')
-        makeSphsPicture_2craft( params.debris.N_spheres, intial_sph_loc, x0_H*1000,...
+        makeSphsPicture_2craft( params.debris.D_spheres, intial_sph_loc, x0_H*1000,...
         [0 0 0], params.V)
 %         quiver3(0,0,0,4*Htot(1,1)/100,4*Htot(2,1)/100,4*Htot(3,1)/100,'r','Linewidth',3)
 %         quiver3(0,0,0,10e3*L_e_tot(1,1),10e3*L_e_tot(2,1),10e3*L_e_tot(3,1),'b','Linewidth',3)
@@ -167,8 +167,10 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         ylabel('Relative Y distance [m]')
         zlabel('Relative Z distance [m]')
         set(gca,'FontName','times')
-        makeSphsPicture_2craft( params.debris.N_spheres, final_sph_loc, x0_H*1000,...
-        [0 0 0], params.V)
+        makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,...
+            [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage],...
+            eye(3), C2_end)
+    
 %         c=colorbar;
 %         c.Label.String = 'Surface Charge Density (nC/m^2)';
 %         c.Label.FontSize = 14;
