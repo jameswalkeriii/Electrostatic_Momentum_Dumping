@@ -217,6 +217,8 @@ for i_tt = 1:length(Ttot)
     X_serv = X_serv + 1/6*(k1+2*k2+2*k3+k4);
     
     %Switch to shadow set if needed
+    % TODO: Update so it switches the MRP based on the net forces
+    % experienced during the rotation
         if norm(X_serv(1:3))>1
            X_serv(1:3) = -X_serv(1:3)/norm(X_serv(1:3))^2;
         end

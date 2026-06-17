@@ -46,11 +46,11 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
 
         figure
         hold on
-        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60*2*pi, false))
-        plot(time_hours,results.Xtot_servicer(7:9,:)*60*2*pi,'Linewidth',2)
+%         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
+        plot(time_hours,abs(results.Xtot_servicer(7:9,:)*60/(2*pi)),'Linewidth',2)
         xlabel('Time (hours)','Fontsize',14)
         ylabel('Reaction Wheel Speeds (rpm)','Fontsize',14)
-        legend('Om\_1','Om\_2','Om\_3','Fontsize',14)
+        legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
         xlim([time_hours(1), time_hours(end)])
         
         figure
