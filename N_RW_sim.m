@@ -82,6 +82,7 @@ for i_tt = 1:length(Ttot)
 %                     end
                     
                     if dot(SN'*params.sim.H/norm(SN'*params.sim.H),N_L_elect_serv/norm(N_L_elect_serv)) > 0 %as the target rotates, the torque changes which would take you out of this location without desat being finished
+%                     if sign(X_serv(6+params.sat_wheel)) ~= sign(params.wheel_speed_signs(params.sat_wheel)) > 0
                         params.sim.sig_RN = [0;0;0];
                         params.attitude_mode = "Slewing_To_First_Attitude";
                     end
@@ -179,9 +180,12 @@ for i_tt = 1:length(Ttot)
     % used by each rigid-body EOM.
     S_L_serv = SN*N_L_elect_serv;
     D_L_deb = DN*N_L_elect_debris;  
+    
+%     h_w = Gs*Iws*Omega;
 
-    params.sim.Lr = -K*sig_SR - P*(S_w_SR) - I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
-    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv;
+    params.sim.Lr = (-K*sig_SR - P*(S_w_SR) - I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
+    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv);% + K_h*h_w;  
+
 
     us = pinv(Gs)*-params.sim.Lr;
     % Remove Control
@@ -268,7 +272,7 @@ for i_tt = 1:length(Ttot)
     normH = norm(params.sim.H);
     H_deb = params.debris.D_MI*w_DN;
     
-    params.sim.dot_prod = dot(S_L_serv/norm(S_L_serv),params.sim.H/norm(params.sim.H));
+    params.sim.dot_prod = dot(N_L_elect_serv/norm(N_L_elect_serv),(SN'*params.sim.H)/norm(SN'*params.sim.H));
 
     params.sim.H_deb = H_deb;
     

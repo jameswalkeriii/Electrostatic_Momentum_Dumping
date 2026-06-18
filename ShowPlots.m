@@ -12,13 +12,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
             normH(i) = norm(results.Htot_servicer(:,i));
         end
         
-        C2_intial = MRP2C(results.Xtot_servicer(1:3,1));
         
-        intial_sph_loc = params.servicer.S_spheres*0;
-        for i = 1:size(params.servicer.S_spheres,2)
-            intial_sph_loc(1:3,i) = C2_intial'*params.servicer.S_spheres(1:3,i);
-            intial_sph_loc(4,i) = params.servicer.S_spheres(4,i);
-        end
         C2_end = MRP2C(results.Xtot_servicer(1:3,end));
         final_sph_loc = params.servicer.S_spheres*0;
         for i = 1:size(params.servicer.S_spheres,2)
@@ -30,7 +24,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(1:3,:), false))
         plot(time_hours,results.Xtot_servicer(1:3,:),'Linewidth',2)
-        xlabel('Time (hours)')
+        xlabel('Time (hrs)')
         ylabel('MRP Components')
         xlim([time_hours(1), time_hours(end)])
 
@@ -38,7 +32,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.normBN_servicer, false))
         plot(time_hours,results.normBN_servicer,'Linewidth',2)
-        xlabel('Time (hours)')
+        xlabel('Time (hrs)')
         ylabel('MRP Magnitude')
         xlim([time_hours(1), time_hours(end)])
 
@@ -48,7 +42,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
 %         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(7:9,:)*60/(2*pi), false))
         plot(time_hours,abs(results.Xtot_servicer(7:9,:)*60/(2*pi)),'Linewidth',2)
-        xlabel('Time (hours)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
         ylabel('Reaction Wheel Speeds (rpm)','Fontsize',14)
         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
         xlim([time_hours(1), time_hours(end)])
@@ -57,7 +51,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.reftot_servicer(1:3,:), false))
         plot(time_hours,results.reftot_servicer(1:3,:),'Linewidth',2)
-        xlabel('Time (hours)')
+        xlabel('Time (hrs)')
         ylabel('Desired Attitude (MRPs)')
         xlim([time_hours(1), time_hours(end)])
 
@@ -72,7 +66,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.werrtot_servicer, true))
         semilogy(time_hours,results.werrtot_servicer,'Linewidth',2)
-        xlabel('Time (hours)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
         ylabel('Magnitude omega B/R ','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
 
@@ -80,7 +74,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.Xtot_servicer(4:6,:), false))
         plot(time_hours,results.Xtot_servicer(4:6,:),'Linewidth',2)
-        xlabel('Time (hours)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
         ylabel('Angular Velocity','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
         
@@ -105,7 +99,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         ylim([0.5,4.5])
         yticks(1:4)
         yticklabels({'First Attitude','Slew to Second','Second Attitude','Slew to First'})
-        xlabel('Time (hours)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
         ylabel('Desaturation Mode','Fontsize',14)
         title('Desaturation Mode History','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
@@ -122,12 +116,27 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         xlim([0,results.Ttot(end)/3600])
         
         
+%         figure 
+%         hold on
+%         rw_speeds_rpm = abs(results.Xtot_servicer(7:9,:))*60/(2*pi);
+%         slew_mode_mask = mode_hist == 2 | mode_hist == 4;
+%         rw_speeds_rpm(:,slew_mode_mask) = NaN;
+%         addModeBands(gca, results.Ttot/3600, mode_hist, mode_colors, calcPlotLimits(rw_speeds_rpm, false))
+%         plot(results.Ttot/3600,rw_speeds_rpm(1,:),'Linewidth',2)
+%         plot(results.Ttot/3600,rw_speeds_rpm(2,:),'Linewidth',2)
+%         plot(results.Ttot/3600,rw_speeds_rpm(3,:),'color',plot_colors.col_4,'Linewidth',2)
+%         xlabel('Time (hrs)','Fontsize',14,'Fontname','Times New Roman')
+%         ylabel('RW Speeds (rpm)','Fontsize',14,'Fontname','Times New Roman')
+%         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
+%         xlim([0,results.Ttot(end)/3600])
+        
+        
         figure
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(normH, false))
         plot(time_hours,normH,'Linewidth',2)
         ylabel('Angular Momentum (Nms)','Fontsize',14,'Fontname','Times New Roman')
-        xlabel('Time (hours)','Fontsize',14,'Fontname','Times New Roman')
+        xlabel('Time (hrs)','Fontsize',14,'Fontname','Times New Roman')
         xlim([time_hours(1), time_hours(end)])
 
         figure
@@ -135,7 +144,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_servicer_tot, false))
         plot(time_hours,results.L_e_servicer_tot,'Linewidth',2)
         ylabel('Electrostatic Torques (Nm)','Fontsize',14)
-        xlabel('Time (hours)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
         legend('L\_x','L\_y','L\_z','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
 
@@ -147,8 +156,10 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         ylabel('Relative Y distance [m]')
         zlabel('Relative Z distance [m]')
         set(gca,'FontName','times')
-        makeSphsPicture_2craft( params.debris.D_spheres, intial_sph_loc, x0_H*1000,...
-        [0 0 0], params.V)
+        makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,[0 0 0], x0_H*1000,...
+        params.V)
+    
+
 %         quiver3(0,0,0,4*Htot(1,1)/100,4*Htot(2,1)/100,4*Htot(3,1)/100,'r','Linewidth',3)
 %         quiver3(0,0,0,10e3*L_e_tot(1,1),10e3*L_e_tot(2,1),10e3*L_e_tot(3,1),'b','Linewidth',3)
 %         quiver3(0,0,0,10e3*L_e_tot(1,11051),10e3*L_e_tot(2,11051),10e3*L_e_tot(3,11051),'b','Linewidth',3)
@@ -157,6 +168,7 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
 %         c.Label.String = 'Surface Charge Density (nC/m^2)';
 %         c.Label.FontSize = 14;
 %         title('Initial Positions')
+        grid off
         view(3)
         
         %Final position plot
