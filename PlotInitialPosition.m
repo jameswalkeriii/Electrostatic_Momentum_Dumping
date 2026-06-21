@@ -8,6 +8,11 @@ for i = 1:size(params.servicer.S_spheres,2)
     plotting_servicer(1:3,i) = SN'*params.servicer.S_spheres(1:3,i);
 end
 
+plotting_debris = params.debris.D_spheres;
+for i = 1:size(params.debris.D_spheres,2)
+    plotting_debris(1:3,i) = DN'*params.debris.D_spheres(1:3,i);
+end
+
 serv_N_COM = SN'*params.servicer.S_COM;
 deb_N_COM = DN'*params.debris.D_COM;
 
@@ -20,7 +25,7 @@ end
 figure
 hold on
 set(gca,'FontName','times')
-makeSphsPicture_2craft(params.debris.D_spheres, plotting_servicer,...
+makeSphsPicture_2craft(plotting_debris, plotting_servicer,...
     [0 0 0], params.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
 
 quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
@@ -30,6 +35,7 @@ quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
 
 scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
 scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
+
 % 
 % c=colorbar;
 % c.Label.String = 'Surface Charge Density (nC/m^2)';

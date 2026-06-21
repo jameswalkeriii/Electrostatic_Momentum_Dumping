@@ -31,7 +31,7 @@ dot_product_magnitude_percent = dot_product_magnitude/max(dot_product_magnitude)
 
 for i = 1:length(data)
     
-    weighted_value = 10*dot_product_norm(i)+ dot_product_magnitude_percent(i);
+    weighted_value = 10*dot_product_norm(i)+ 2*dot_product_magnitude_percent(i);
     
     tot(i,1:4) = [dot_product_norm(i),dot_product_magnitude(i),dot_product_magnitude_percent(i),weighted_value];
     if weighted_value > anti_parr_check_min

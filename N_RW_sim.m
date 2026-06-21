@@ -1,4 +1,4 @@
-function results = N_RW_sim(X0_serv,X0_deb, Iws, Gs0, K, P, Ttot,params,data)
+function results = N_RW_sim(X0_serv,X0_deb, Iws, Gs0, K, P, Ttot,params,data,K_h)
 
 I_RW = params.servicer.S_MI; % The moment of inertia of the servicer excluding the reaction wheels
 
@@ -26,7 +26,7 @@ params.sim.X_serv = X_serv; % store state of the servicer
 params.sim.X_deb = X_deb; % store state of the target
 
 % TODO: Not always true
-params.sim.H = [0,0,0];
+% params.sim.H = [0,0,0];
 for i_tt = 1:length(Ttot)
     
     t = Ttot(i_tt);
@@ -54,7 +54,8 @@ for i_tt = 1:length(Ttot)
 %                 params.V = [10000,-10000];
                 [data_anti,~,~] = find_anti_torque(SN'*params.sim.H,data);
                 params.sim.sig_RN = C2MRP(data_anti.SN);
-%                 params.sim.sig_RN = [0.0911;-0.3205;-0.1814];
+                
+%                 params.sim.sig_RN = C2MRP(Euler3212C(deg2rad([-90,0,-20])));
                 params.attitude_mode = "Slewing_To_Second_Attitude";
                 
             case "Slewing_To_Second_Attitude"
@@ -82,7 +83,7 @@ for i_tt = 1:length(Ttot)
 %                     end
                     
                     if dot(SN'*params.sim.H/norm(SN'*params.sim.H),N_L_elect_serv/norm(N_L_elect_serv)) > 0 %as the target rotates, the torque changes which would take you out of this location without desat being finished
-%                     if sign(X_serv(6+params.sat_wheel)) ~= sign(params.wheel_speed_signs(params.sat_wheel)) > 0
+%                     if sign(X_serv(6+params.sat_wheel)) ~= sign(params.wheel_speed_signs(params.sat_wheel))
                         params.sim.sig_RN = [0;0;0];
                         params.attitude_mode = "Slewing_To_First_Attitude";
                     end
@@ -181,10 +182,10 @@ for i_tt = 1:length(Ttot)
     S_L_serv = SN*N_L_elect_serv;
     D_L_deb = DN*N_L_elect_debris;  
     
-%     h_w = Gs*Iws*Omega;
+    h_w = Gs*Iws*Om_mat;
 
     params.sim.Lr = (-K*sig_SR - P*(S_w_SR) - I_RW*((S_w_dot_RN) - tild(S_w_SN)*(S_w_RN)) + ...
-    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv);% + K_h*h_w;  
+    tild(S_w_SN)*(I_RW*S_w_SN + Gs*hs)-S_L_serv) + K_h*h_w;
 
 
     us = pinv(Gs)*-params.sim.Lr;
@@ -223,9 +224,12 @@ for i_tt = 1:length(Ttot)
     %Switch to shadow set if needed
     % TODO: Update so it switches the MRP based on the net forces
     % experienced during the rotation
-        if norm(X_serv(1:3))>1
-           X_serv(1:3) = -X_serv(1:3)/norm(X_serv(1:3))^2;
-        end
+    
+    if norm(X_serv(1:3))>1
+        X_serv(1:3) = -X_serv(1:3)/norm(X_serv(1:3))^2;
+    end
+    
+        
     
     SN = MRP2C(X_serv(1:3));
     
@@ -279,6 +283,10 @@ for i_tt = 1:length(Ttot)
     params.sim.us = us;
     params.sim.L_e_serv = S_L_serv;
     params.sim.L_e_deb = D_L_deb;
+    
+    if X_serv(9) > 200
+        ddd = 0;
+    end
     
  
     results = update_storage(results,i_tt,params);
@@ -395,6 +403,7 @@ for i_tt = 1:length(Ttot)
         plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(1,1:i_tt),'LineWidth',2)
         plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(2,1:i_tt),'LineWidth',2)
         plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(3,1:i_tt),'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_speed(1:i_tt),'k','LineWidth',2)
         set(gca,'FontName','times')
         xlabel('Time (hours)')
         ylabel('$\omega_{DN}$ (rad/s)')

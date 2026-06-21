@@ -129,6 +129,17 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
 %         ylabel('RW Speeds (rpm)','Fontsize',14,'Fontname','Times New Roman')
 %         legend('$\Omega_1$','$\Omega_2$','$\Omega_3$','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
 %         xlim([0,results.Ttot(end)/3600])
+
+        figure 
+        hold on
+        addModeBands(gca, results.Ttot/3600, mode_hist, mode_colors, calcPlotLimits(abs(results.Htot_servicer(1:3,:)), false))
+        plot(results.Ttot/3600,abs(results.Htot_servicer(1,:)),'Linewidth',2)
+        plot(results.Ttot/3600,abs(results.Htot_servicer(2,:)),'Linewidth',2)
+        plot(results.Ttot/3600,abs(results.Htot_servicer(3,:)),'color',plot_colors.col_4,'Linewidth',2)
+        xlabel('Time (hrs)','Fontsize',14,'Fontname','Times New Roman')
+        ylabel('Angular Momentum (Nms)','Fontsize',14,'Fontname','Times New Roman')
+        legend('X','Y','Z','Fontsize',12,'Fontname','Times New Roman','Location','southeast')
+        xlim([0,results.Ttot(end)/3600])
         
         
         figure
@@ -147,48 +158,57 @@ function ShowPlots(params,results,ttotal,x0_H,flag)
         xlabel('Time (hrs)','Fontsize',14)
         legend('L\_x','L\_y','L\_z','Fontsize',14)
         xlim([time_hours(1), time_hours(end)])
-
-        %Initial position plot
-        figure 
-        grid on
-        hold on
-        xlabel('Relative X distance [m]')
-        ylabel('Relative Y distance [m]')
-        zlabel('Relative Z distance [m]')
-        set(gca,'FontName','times')
-        makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,[0 0 0], x0_H*1000,...
-        params.V)
-    
-
-%         quiver3(0,0,0,4*Htot(1,1)/100,4*Htot(2,1)/100,4*Htot(3,1)/100,'r','Linewidth',3)
-%         quiver3(0,0,0,10e3*L_e_tot(1,1),10e3*L_e_tot(2,1),10e3*L_e_tot(3,1),'b','Linewidth',3)
-%         quiver3(0,0,0,10e3*L_e_tot(1,11051),10e3*L_e_tot(2,11051),10e3*L_e_tot(3,11051),'b','Linewidth',3)
-        axis tight
-%         c=colorbar;
-%         c.Label.String = 'Surface Charge Density (nC/m^2)';
-%         c.Label.FontSize = 14;
-%         title('Initial Positions')
-        grid off
-        view(3)
         
-        %Final position plot
-        figure 
-        grid on
+        figure
         hold on
-        xlabel('Relative X distance [m]')
-        ylabel('Relative Y distance [m]')
-        zlabel('Relative Z distance [m]')
-        set(gca,'FontName','times')
-        makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,...
-            [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage],...
-            eye(3), C2_end)
-    
-%         c=colorbar;
-%         c.Label.String = 'Surface Charge Density (nC/m^2)';
-%         c.Label.FontSize = 14;
-        axis tight
-%         title('Final Positions')
-        view(3)
+        addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_servicer_tot, false))
+        plot(time_hours,results.Lrtot_servicer,'Linewidth',2)
+        ylabel('Control Torque (Nm)','Fontsize',14)
+        xlabel('Time (hrs)','Fontsize',14)
+        legend('L\_x','L\_y','L\_z','Fontsize',14)
+        xlim([time_hours(1), time_hours(end)])
+
+%         %Initial position plot
+%         figure 
+%         grid on
+%         hold on
+%         xlabel('Relative X distance [m]')
+%         ylabel('Relative Y distance [m]')
+%         zlabel('Relative Z distance [m]')
+%         set(gca,'FontName','times')
+%         makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,[0 0 0], x0_H*1000,...
+%         params.V)
+%     
+% 
+% %         quiver3(0,0,0,4*Htot(1,1)/100,4*Htot(2,1)/100,4*Htot(3,1)/100,'r','Linewidth',3)
+% %         quiver3(0,0,0,10e3*L_e_tot(1,1),10e3*L_e_tot(2,1),10e3*L_e_tot(3,1),'b','Linewidth',3)
+% %         quiver3(0,0,0,10e3*L_e_tot(1,11051),10e3*L_e_tot(2,11051),10e3*L_e_tot(3,11051),'b','Linewidth',3)
+%         axis tight
+% %         c=colorbar;
+% %         c.Label.String = 'Surface Charge Density (nC/m^2)';
+% %         c.Label.FontSize = 14;
+% %         title('Initial Positions')
+%         grid off
+%         view(3)
+        
+%         %Final position plot
+%         figure 
+%         grid on
+%         hold on
+%         xlabel('Relative X distance [m]')
+%         ylabel('Relative Y distance [m]')
+%         zlabel('Relative Z distance [m]')
+%         set(gca,'FontName','times')
+%         makeSphsPicture_2craft( params.debris.D_spheres, params.servicer.S_spheres,...
+%             [0,0,0],params.N_rvec_km*1000, [params.debris.voltage, params.servicer.voltage],...
+%             eye(3), C2_end)
+%     
+% %         c=colorbar;
+% %         c.Label.String = 'Surface Charge Density (nC/m^2)';
+% %         c.Label.FontSize = 14;
+%         axis tight
+% %         title('Final Positions')
+%         view(3)
     end
 
 end
@@ -202,7 +222,7 @@ function addModeBands(ax, t_hist, mode_hist, mode_colors, y_limits)
         x_start = t_hist(idx_start);
         x_end = t_hist(idx_end);
         patch(ax, [x_start x_end x_end x_start], [y_limits(1) y_limits(1) y_limits(2) y_limits(2)], ...
-            mode_colors(active_mode,:), 'FaceAlpha', 0.4, 'EdgeColor', 'none', 'HandleVisibility', 'off');
+            mode_colors(active_mode,:), 'FaceAlpha', 0.6, 'EdgeColor', 'none', 'HandleVisibility', 'off');
     end
     ylim(ax, y_limits)
     set(ax, 'Layer', 'top')

@@ -38,7 +38,9 @@ set(0,'defaultAxesFontSize',16)
     servicer_S_MI = DCM_SW2B*(DCM_IB*SW_MI*DCM_IB')*DCM_SW2B'; % in body frame
     servicer_S_COM = DCM_SW2B*SW_COM + [-2 0 0]'; % in body frame
 
-    sphLoad2 = load('GOESR_bus'); % Loading MSM model for GOES-R without boom
+    sphLoad2 = load('GOESR_bus_noboom'); % Loading MSM model for GOES-R without boom
+%     sphLoad2 = load('GOESR_bus'); % Loading MSM model for GOES-R without boom
+
 
     % TODO: What are the offsets with the COM of mass?
 
@@ -75,7 +77,6 @@ end
 params.debris.D_COM = [2,0,0]';
 params.debris.D_MI = debris_D_MI;
 
-
 SI = M_90deg_Z*M_90deg_Y;
 
 for i = 1:length(sphLoad2.SPHSb)
@@ -96,6 +97,28 @@ params.V = [params.debris.voltage,params.servicer.voltage];
 % Intial Rotation Matrix relative to the inital orientations.
 params.servicer.NS = [1,0,0; 0,1,0;0,0,1];
 params.debris.ND = [1,0,0; 0,1,0;0,0,1];
+
+
+%% Additional Rotations
+
+EA = deg2rad([-90,0,0]);
+SN_i = Euler3212C(EA);
+SN_i = eye(3);
+DN_i = eye(3);
+
+for i = 1:length(sphLoad2.SPHSb)
+    sph_loc = sphLoad2.SPHSb(1:3,i);
+    params.servicer.S_spheres(1:3,i) = SN_i'*params.servicer.S_spheres(1:3,i);
+    params.servicer.S_spheres(4,i) = sphLoad2.SPHSb(4,i);
+end
+
+params.servicer.S_COM = SN_i'*params.servicer.S_COM;
+params.servicer.S_MI = SN_i'*params.servicer.S_MI*SN_i'';
+
+
+params.debris.D_COM = DN_i'*params.debris.D_COM;
+params.debris.D_MI = DN_i'*params.debris.D_MI*DN_i'';
+
 
 %% Computing Torques for all servicer Orientations (Stationary Target)
 
@@ -139,42 +162,79 @@ elseif flag_solve4torques == 3
 else
     load('n_50_30m_-10kV_SSL_10kV_GOESR_pos_1');
 end
-
-
-
-    % Rotating the SSL craft to the intial orientation
-    for i = 1:length(sphLoad1.SPHSb)
-        sph_loc = sphLoad1.SPHSb(1:3,i);
-        new_sph_loc = DI*sph_loc;
-        params.debris.D_spheres(1:3,i) = new_sph_loc;
-        params.debris.D_spheres(4,i) = sphLoad1.SPHSb(4,i);
-    end
-    % params.debris.D_COM = debris_D_COM;
-    params.debris.D_COM = [2,0,0]';
-    params.debris.D_MI = debris_D_MI;
     
-%% Plot all torques experienced by the servicer
+% Plot all torques experienced by the servicer
 
-PlotServicerTorqueCloud(params, relative_orientation_EMM_Torques);
+% PlotServicerTorqueCloud(params, relative_orientation_EMM_Torques);
 
 %% Initial position plot
 
-% This function does not update the params so using a different SN or DN is
-% purely for making figures
-EA = deg2rad([0,0,0]);
-SN = Euler3212C(EA);
-DN = eye(3);
 
 [ ~, ~, ~, N_init_Lserv, ~, overlapFlag] = ...
     multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
-    params.V, DN', SN' ,...
+    params.V, eye(3), eye(3),...
     params.debris.D_COM, params.servicer.S_COM);
 
 N_L2_norm = N_init_Lserv/norm(N_init_Lserv);
 
-PlotInitialPosition(params, SN, DN, [0,0,0]);
+PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 
-PlotInitialPositionContinuous(params, SN, DN, N_init_Lserv)
+% PlotInitialPositionContinuous(params, SN, DN, N_init_Lserv)
+
+% Computing the torques for all Target Rotations at first attitude
+
+[rotating_debris_torques] = All_Torques_Target(params,n,eye(3));
+
+PlotServicerTorqueCloud(params, rotating_debris_torques,SN_i);
+
+% 
+% torque_origin = params.servicer.S_COM + params.N_rvec_km*1000;
+% figure
+% hold on
+% torque_norms = zeros(length(rotating_debris_torques),1);
+% for i_L = 1:length(rotating_debris_torques)
+%     torque_norms(i_L) = norm(rotating_debris_torques{i_L}.N_L_elect_serv);
+% end
+% max_torque = max(torque_norms);
+% if max_torque == 0
+%     max_torque = 1;
+% end
+% torque_arrow_scale = 8/max_torque;
+% torque_colors = torqueMagnitudeColormapLocal(256);
+% 
+% for i_L = 1:length(rotating_debris_torques)
+%     E_torque = rotating_debris_torques{i_L}.N_L_elect_serv;
+%     if torque_norms(i_L) > 0
+%         color_idx = min(256,max(1,ceil(256*torque_norms(i_L)/max_torque)));
+%         E_torque = torque_arrow_scale*E_torque;
+%         quiver3(torque_origin(1), torque_origin(2), torque_origin(3),...
+%             E_torque(1),E_torque(2),E_torque(3),0,...
+%             'Linewidth',0.8,'Color',torque_colors(color_idx,:))
+%     end
+% end
+% 
+% set(gca,'FontName','times')
+% makeSphsPicture_2craft(params.debris.D_spheres, params.servicer.S_spheres,...
+%     [0 0 0], params.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
+% 
+% scatter3(params.debris.D_COM(1),params.debris.D_COM(2),params.debris.D_COM(3),20,'r','filled')
+% scatter3(params.servicer.S_COM(1)+30,params.servicer.S_COM(2),params.servicer.S_COM(3),20,'k','filled')
+% 
+% % params.debris.D_COM, params.servicer.S_COM
+% % c=colorbar;
+% % c.Label.String = 'Surface Charge Density (nC/m^2)';
+% % c.Label.FontSize = 14;
+% 
+% axis equal
+% xlim([-3,40])
+% ylim([-17,17])
+% zlim([-12,12])
+% xlabel('X [m]')
+% ylabel('Y [m]')
+% zlabel('Z [m]')
+% grid off
+% view(3)
+% hold off
 
 %% Anti_torque Attitude
 
@@ -182,19 +242,25 @@ PlotInitialPositionContinuous(params, SN, DN, N_init_Lserv)
         
 [ ~, ~, ~, N_Lserv_anti, ~, overlapFlag] = ...
     multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000, params.V,...
-    DN', data_anti.SN', params.debris.D_COM, params.servicer.S_COM);
+    eye(3), data_anti.SN', params.debris.D_COM, params.servicer.S_COM);
 
-PlotAntiTorqueAttitude(params, DN, data_anti.SN, N_init_Lserv, N_Lserv_anti);
+PlotAntiTorqueAttitude(params, eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti);
 
-PlotAntiTorqueAttitudeContinuous(params, DN, data_anti.SN, N_init_Lserv, N_Lserv_anti)
+% PlotAntiTorqueAttitudeContinuous(params, eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti)
 
-PlotServicerInitialAntiOverlayContinuous(params, DN, SN, data_anti.SN, N_init_Lserv, N_Lserv_anti)
+% PlotServicerInitialAntiOverlayContinuous(params, eye(3), eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti)
+
+%% Computing the torques for all Target Rotations
+
+[rotating_debris_torques] = All_Torques_Target(params,n,data_anti.SN');
+
+% PlotServicerTorqueCloud(params, rotating_debris_torques,data_anti.SN');
 
 %% Reaction Wheel Simulations with E Torques
 
 % Component of the Moment of Inertia of the reaction wheel about the wheel
 % axis TODO: Justifiy wheel size
-Iws = .12;
+Iws = .2;
 
 % Defining the "Gimbal" Frame
 % Gimbal along the principle axes of the spacecraft
@@ -219,7 +285,7 @@ D_w_BN = [0.0;0.0;0.0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 1000*3600;
+    tn = 10*3600;
 % Step size (s)
     dt = 1;
  
@@ -229,9 +295,9 @@ params0 = params;
 
 % Intial wheel speeds 
 Om_0 = [0;0;0];
-
-params.wheel_speed_threshold = 3000*(2*pi)/60;
-
+Om_0 = [0;150;0];
+params.sim.H = Om_0*Iws;
+params.wheel_speed_threshold = 1000*(2*pi)/60;
 % [data_anti,~,~] = find_anti_torque(H,data);
 
 X0_servicer = [S_sig_BN0;S_w_BN;Om_0];
@@ -244,9 +310,20 @@ if sim_flag == 1
     
 end
 
-
+K_h = 0.0;
 
 results =...
-    N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,relative_orientation_EMM_Torques);
+    N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,relative_orientation_EMM_Torques,K_h);
 %%
 ShowPlots(params,results,Ttot(end),params.N_rvec_km,true)
+
+function cmap = torqueMagnitudeColormapLocal(n_colors)
+    color_stops = [0.10 0.22 0.55;
+                   0.00 0.58 0.72;
+                   0.18 0.72 0.42;
+                   0.74 0.20 0.62;
+                   0.45 0.05 0.18];
+    stop_locations = linspace(0,1,size(color_stops,1));
+    query_locations = linspace(0,1,n_colors);
+    cmap = interp1(stop_locations, color_stops, query_locations);
+end
