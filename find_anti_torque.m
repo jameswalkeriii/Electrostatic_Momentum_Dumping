@@ -12,7 +12,7 @@ for i = 1:length(data)
     % If the spacecraft are overlapping, then set the value as NaN
     if data{i}.overlapFlag == 0
         % If not, add the sum measure to tot
-        E_torque_Nframe = data{i}.N_L_elect_serv;
+        E_torque_Nframe = data{i}.avg_N_L_elect_serv;
         Ang_mom_Nframe = H;
         
         E_torque_Nframe_dir = E_torque_Nframe/norm(E_torque_Nframe);
@@ -31,12 +31,13 @@ dot_product_magnitude_percent = dot_product_magnitude/max(dot_product_magnitude)
 
 for i = 1:length(data)
     
-    weighted_value = 10*dot_product_norm(i)+ 2*dot_product_magnitude_percent(i);
+    weighted_value = 10*dot_product_norm(i) + 1*dot_product_magnitude_percent(i);
     
     tot(i,1:4) = [dot_product_norm(i),dot_product_magnitude(i),dot_product_magnitude_percent(i),weighted_value];
     if weighted_value > anti_parr_check_min
         clear data_anti
         data_anti = data{i};
+        data_anti.dot_product_norm = dot_product_norm(i);
         i_anti = i;
         anti_parr_check_min = weighted_value;
     end

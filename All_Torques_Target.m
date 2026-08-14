@@ -1,6 +1,6 @@
 % Computing all the torque vectors generated between two charged
 % spacecraft for all orientations
-function [data,Ls,EAs] = All_Torques_Target(params,n,SN)
+function [data,Ls,EAs,overlap_flag] = All_Torques_Target(params,n,SN)
 range_yaw = linspace(-pi,pi,n);
 range_pitch = linspace(-pi/2,pi/2,n);
 range_roll = linspace(-pi,pi,n);
@@ -8,6 +8,8 @@ i = 1;
 Ls = zeros(n^3,3);
 data = cell(1,n^3);
 EAs = zeros(n^3,3);
+
+overlap = 0;
 
 NS = SN';
 
@@ -45,6 +47,7 @@ for y = 1:n
 %             sigs(i,:) = C2MRP(Euler3212C(EA));
             EAs(i,:) = EA;
             i = i+1;
+            overlap = overlap+overlapFlag;
 
 %             PlotInitialPosition(params, SN, DN, N_L_elect_serv);
             
@@ -52,5 +55,7 @@ for y = 1:n
         end
     end
 end
+
+overlap_flag = sum(overlap);
 
 end

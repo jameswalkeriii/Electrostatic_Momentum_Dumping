@@ -293,7 +293,7 @@ for i_tt = 1:length(Ttot)
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Real Time Plotting %%%%%%%%%%%%%%%%%%%%%%%%%%%
     time_left_percentage = t/Ttot(end);
-    if time_left_percentage*500 > percent_check || t == Ttot(end)
+    if time_left_percentage*100 > percent_check || t == Ttot(end)
 
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
         percent_check = percent_check + 1;

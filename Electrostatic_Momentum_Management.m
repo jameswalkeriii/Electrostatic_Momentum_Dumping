@@ -101,15 +101,19 @@ params.debris.ND = [1,0,0; 0,1,0;0,0,1];
 
 %% Additional Rotations
 
-EA = deg2rad([-90,0,0]);
-SN_i = Euler3212C(EA);
-SN_i = eye(3);
+EA_s = deg2rad([0,0,0]);
+SN_i = Euler3212C(EA_s);
+% SN_i = eye(3);
+EA_d = deg2rad([0,0,0]);
+DN_i = Euler3212C(EA_d);
 DN_i = eye(3);
 
 for i = 1:length(sphLoad2.SPHSb)
-    sph_loc = sphLoad2.SPHSb(1:3,i);
     params.servicer.S_spheres(1:3,i) = SN_i'*params.servicer.S_spheres(1:3,i);
-    params.servicer.S_spheres(4,i) = sphLoad2.SPHSb(4,i);
+end
+
+for i = 1:length(sphLoad1.SPHSb)
+    params.debris.D_spheres(1:3,i) = DN_i'*params.debris.D_spheres(1:3,i);
 end
 
 params.servicer.S_COM = SN_i'*params.servicer.S_COM;
@@ -123,16 +127,21 @@ params.debris.D_MI = DN_i'*params.debris.D_MI*DN_i'';
 %% Computing Torques for all servicer Orientations (Stationary Target)
 
 flag_solve4torques = 1;
-n = 9;
+n = 5;
+params0 = params;
 clear relative_orientation_EMM_Torques
 % This is computed using 3-2-1 Euler Angles with Yaw [-180 - 180], Pitch
 % [-90 - 90], and Roll [-180 - 180] for n valus with in these ranges
 % for n = 50, that is N = 125000
+
+torques_all_geo_T = [];
+% for i_flag=1:4
+% flag_solve4torques = i_flag;
 if flag_solve4torques == 1
     [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    
+    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 elseif flag_solve4torques == 2
-    params0 = params;
+
     % Debris modeled as a single 10 m radius sphere
     params.debris.mass = 2000; % [kg]
     params.debris.voltage = -10e3; % [V]
@@ -142,27 +151,146 @@ elseif flag_solve4torques == 2
 
     [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
     PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-    params=params0;
 elseif flag_solve4torques == 3
     % Debris modeled as five spheres aligned with the Y-axis
-    params0 = params;
     params.debris.D_COM = [0;0;0]; % [m]
-    Ix = 1/4*params.debris.mass*2.5^2 + 1/12*params.debris.mass*19.5^2;
-    Iz = 1/4*params.debris.mass*2.5^2 + 1/12*params.debris.mass*19.5^2;
-    Iy = .5*params.debris.mass*2.5^2;
+    Ix = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
+    Iz = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
+    Iy = .5*params.debris.mass*3^2;
     params.debris.D_MI = [Ix,0,0;0,Iy,0;0,0,Iz]; % [kg m^2]
-    params.debris.D_spheres = [0 0 0 0 0;
-        -14 -7 0 7 14;
-        0 0 0 0 0;
-        3 3 3 3 3];
+    params.debris.D_spheres = [1 1 1 1 1 1 1 1 1 1;
+        -14.2000  -11.0444   -7.8889   -4.7333   -1.5778    1.5778    4.7333    7.8889   11.0444   14.2000;
+        0 0 0 0 0 0 0 0 0 0;
+        1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5];
+    for i_sph = 1:10
+        params.debris.D_spheres(1:3,i_sph) = DN_i'*params.debris.D_spheres(1:3,i_sph);
+    end
     
     [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
+    PlotInitialPosition(params, eye(3), eye(3), [0,0,0],params0);
+%     PlotInitialPositionContinuousCylinder(params, eye(3), eye(3), [0;0;0]);
+elseif flag_solve4torques == 4
+    params.debris.D_COM = DN_i'*[2.7,-1,0]';
+    params.debris.D_MI = params.servicer.S_MI;
+    params.debris.D_spheres = sphLoad2.SPHSb;
+    for i = 1:length(sphLoad2.SPHSb)
+        sph_loc = sphLoad2.SPHSb(1:3,i);
+        new_sph_loc = DN_i'*SI*sph_loc;
+        params.debris.D_spheres(1:3,i) = new_sph_loc;
+        params.debris.D_spheres(4,i) = sphLoad2.SPHSb(4,i);
+    end
+    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
     PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-    params=params0;
 else
     load('n_50_30m_-10kV_SSL_10kV_GOESR_pos_1');
 end
-    
+[ ~, ~, ~, Lserv, ~, overlapFlag] = ...
+    multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
+    params.V, eye(3), eye(3),...
+    params.debris.D_COM, params.servicer.S_COM);
+
+torques_all_geo_T = [torques_all_geo_T,Lserv];
+
+% end
+% %%
+% serv_N_COM = params0.servicer.S_COM;
+% deb_N_COM = params0.debris.D_COM;
+% 
+% figure
+% hold on
+% set(gca,'FontName','times')
+% makeSphsPicture_2craft(params0.debris.D_spheres, params0.servicer.S_spheres,...
+%     [0 0 0], params0.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
+% 
+% 
+% q(1) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,1),torques_all_geo_T(2,1),torques_all_geo_T(3,1),6e3,'Linewidth',3);
+% 
+% q(2) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,2),torques_all_geo_T(2,2),torques_all_geo_T(3,2),6e3,'Linewidth',3);
+% 
+% q(3) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,3),torques_all_geo_T(2,3),torques_all_geo_T(3,3),6e3,'Linewidth',3);
+% 
+% q(4) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,4),torques_all_geo_T(2,4),torques_all_geo_T(3,4),6e3,'Linewidth',3);
+% 
+% 
+% scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
+% scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
+% 
+% 
+% c=colorbar;
+% c.Label.String = 'Surface Charge Density (nC/m^2)';
+% c.Label.FontSize = 14;
+% legend(q,'True Shape','Sphere', 'Cylinder','Single Panel')
+% 
+% axis equal
+% xlim([27,40])
+% ylim([-5,17])
+% zlim([-12,12])
+% xlabel('X [m]')
+% ylabel('Y [m]')
+% zlabel('Z [m]')
+% grid off
+% view(3)
+% hold off
+% 
+% figure
+% hold on
+% set(gca,'FontName','times')
+% makeSphsPicture_2craft(params0.debris.D_spheres, params0.servicer.S_spheres,...
+%     [0 0 0], params0.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
+% 
+% 
+% q(1) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,1),torques_all_geo_T(2,1),torques_all_geo_T(3,1),10e5,'Linewidth',3);
+% 
+% q(2) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,2),torques_all_geo_T(2,2),torques_all_geo_T(3,2),10e5,'Linewidth',3);
+% 
+% q(3) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,3),torques_all_geo_T(2,3),torques_all_geo_T(3,3),10e5,'Linewidth',3);
+% 
+% q(4) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
+%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
+%     torques_all_geo_T(1,4),torques_all_geo_T(2,4),torques_all_geo_T(3,4),10e5,'Linewidth',3);
+% 
+% scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
+% scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
+% 
+% 
+% c=colorbar;
+% c.Label.String = 'Surface Charge Density (nC/m^2)';
+% c.Label.FontSize = 14;
+% legend(q,'Two Panel','Sphere', 'Cylinder','Single Panel')
+% axis equal
+% xlim([-10,40])
+% ylim([-17,17])
+% zlim([-12,12])
+% xlabel('X [m]')
+% ylabel('Y [m]')
+% zlabel('Z [m]')
+% grid off
+% view(3)
+% hold off
+% 
+%     
 % Plot all torques experienced by the servicer
 
 % PlotServicerTorqueCloud(params, relative_orientation_EMM_Torques);
@@ -170,14 +298,11 @@ end
 %% Initial position plot
 
 
-[ ~, ~, ~, N_init_Lserv, ~, overlapFlag] = ...
-    multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
-    params.V, eye(3), eye(3),...
-    params.debris.D_COM, params.servicer.S_COM);
+[Init_pos_targ_rot, ~, ~] = Avg_Servicer_Torque(params,n,eye(3));
 
-N_L2_norm = N_init_Lserv/norm(N_init_Lserv);
+N_L2_norm = Init_pos_targ_rot.Ls_target_rotation_norm;
 
-PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
+PlotInitialPosition(params, eye(3), eye(3), N_L2_norm);
 
 % PlotInitialPositionContinuous(params, SN, DN, N_init_Lserv)
 
@@ -185,7 +310,7 @@ PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 
 [rotating_debris_torques] = All_Torques_Target(params,n,eye(3));
 
-PlotServicerTorqueCloud(params, rotating_debris_torques,SN_i);
+PlotServicerTorqueCloud(params, rotating_debris_torques,SN_i, flag_solve4torques,SN_i);
 
 % 
 % torque_origin = params.servicer.S_COM + params.N_rvec_km*1000;
@@ -238,23 +363,23 @@ PlotServicerTorqueCloud(params, rotating_debris_torques,SN_i);
 
 %% Anti_torque Attitude
 
-[data_anti,i_anti,tot] = find_anti_torque(N_init_Lserv,relative_orientation_EMM_Torques);
+[data_anti,i_anti,tot] = find_anti_torque(N_L2_norm,relative_orientation_EMM_Torques);
         
 [ ~, ~, ~, N_Lserv_anti, ~, overlapFlag] = ...
     multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000, params.V,...
     eye(3), data_anti.SN', params.debris.D_COM, params.servicer.S_COM);
 
-PlotAntiTorqueAttitude(params, eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti);
+PlotAntiTorqueAttitude(params, eye(3), data_anti.SN, N_L2_norm, N_Lserv_anti);
 
 % PlotAntiTorqueAttitudeContinuous(params, eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti)
 
 % PlotServicerInitialAntiOverlayContinuous(params, eye(3), eye(3), data_anti.SN, N_init_Lserv, N_Lserv_anti)
 
-%% Computing the torques for all Target Rotations
+%% Computing the torques for all Target Rotations at the anti parallel attitude
 
 [rotating_debris_torques] = All_Torques_Target(params,n,data_anti.SN');
 
-% PlotServicerTorqueCloud(params, rotating_debris_torques,data_anti.SN');
+PlotServicerTorqueCloud(params, rotating_debris_torques,data_anti.SN'*SN_i,flag_solve4torques,SN_i);
 
 %% Reaction Wheel Simulations with E Torques
 
@@ -285,19 +410,19 @@ D_w_BN = [0.0;0.0;0.0];
     K = 5;
     P = 500;
 % Total simulation time (s)
-    tn = 10*3600;
+    tn = 100*3600;
 % Step size (s)
     dt = 1;
  
 Ttot = 0:dt:tn;
 
-params0 = params;
+params = params0;
 
 % Intial wheel speeds 
-Om_0 = [0;0;0];
-Om_0 = [0;150;0];
+Om_0 = [3001;0;0];
+% Om_0 = [0;150;0];
 params.sim.H = Om_0*Iws;
-params.wheel_speed_threshold = 1000*(2*pi)/60;
+params.wheel_speed_threshold = 3000*(2*pi)/60;
 % [data_anti,~,~] = find_anti_torque(H,data);
 
 X0_servicer = [S_sig_BN0;S_w_BN;Om_0];

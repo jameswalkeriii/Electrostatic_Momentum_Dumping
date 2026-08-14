@@ -11,39 +11,47 @@ EAs = zeros(n^3,3);
 
 ND = eye(3);
 
-for y = 1:n
-    yaw = range_yaw(y);
-    for p = 1:n
-        pitch = range_pitch(p);
-        for r = 1:n
-            roll = range_roll(r);
-            EA = [yaw,pitch,roll];
-%             if EA(1) == 0
-%                 if EA(2) == 0 
-%                     if EA(3) > pi-.001
-%                         ddd=0;
-%                     elseif EA(3) >0
-%                         ddd = 0;
-%                     end
-%                 end
-%             end
-            SN = Euler3212C(EA);
+for y_s = 1:n
+    yaw_servicer = range_yaw(y_s);
+    for p_s = 1:n
+        pitch_servicer = range_pitch(p_s);
+        for r_s = 1:n
+            roll_servicer = range_roll(r_s);
+            EA_servicer = [yaw_servicer,pitch_servicer,roll_servicer];
+            SN = Euler3212C(EA_servicer);
             NS = SN';
-            [N_F_on_debris, N_F_on_serv, N_L_elect_debris, N_L_elect_serv, qs, overlapFlag] = ...
-                multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
-                params.V, ND, NS, params.debris.D_COM, params.servicer.S_COM);
-            data{i}.EA = EA;
+            
+            [data_target_rotations, Ls_norms] = Avg_Servicer_Torque(params,n,SN);
+
+            avg_Ls_target_rotation_norm = mean(Ls_norms);
+            
+            data{i} = data_target_rotations;
+            data{i}.EA = EA_servicer;
             data{i}.NS = NS;
             data{i}.SN = SN;
             data{i}.MRP = C2MRP(SN);
-            data{i}.N_F_on_debris = N_F_on_debris;
-            data{i}.N_F_on_serv = N_F_on_serv;
-            data{i}.N_L_elect_debris = N_L_elect_debris;
-            data{i}.N_L_elect_serv = N_L_elect_serv;
-            data{i}.overlapFlag = overlapFlag;
-            Ls(i,:) = N_L_elect_serv/norm(N_L_elect_serv);
+            Ls(i,:) = avg_Ls_target_rotation_norm;
 %             sigs(i,:) = C2MRP(Euler3212C(EA));
-            EAs(i,:) = EA;
+            EAs(i,:) = EA_servicer;
+            
+            for i_targets = 1:length(Ls_norms)
+                L_tr = data_target_rotations.all_Ls_target_rotating{i_targets}.N_L_elect_serv;
+                L_tr_norm = L_tr/norm(L_tr);
+                
+                data_target_rotations.all_Ls_target_rotating{i_targets}.angle_from_mean = rad2deg(acos(dot(avg_Ls_target_rotation_norm,L_tr_norm)));
+                rot_angs(i_targets) = data_target_rotations.all_Ls_target_rotating{i_targets}.angle_from_mean;
+            end
+            
+            data{i}.average_dist_angle = mean(rot_angs);
+            
+            if data{i}.average_dist_angle > 40
+                data{i}.dist = 1;
+                % 1 = wide distribution
+            else
+                data{i}.dist = 0;
+                % 0 = narrow distribution
+            end
+            
             i = i+1;
         end
     end
