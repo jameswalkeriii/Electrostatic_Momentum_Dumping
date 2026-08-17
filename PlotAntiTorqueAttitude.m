@@ -39,7 +39,9 @@ p(2)=quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000,...
     N_L2_anti_norm(1),N_L2_anti_norm(2),N_L2_anti_norm(3),6,'Linewidth',3);
 
 scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
-scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
+scatter3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
+    serv_N_COM(2) + params.N_rvec_km(2)*1000, ...
+    serv_N_COM(3) + params.N_rvec_km(3)*1000, 20, 'k', 'filled')
 colormap(parula)
 c=colorbar;
 c.Label.String = 'Surface Charge Density (nC/m^2)';

@@ -1,4 +1,4 @@
-function PlotServicerTorqueCloud(params, relative_orientation_EMM_Torques, C_plot, flag_solve4torques,SN_i)
+function PlotServicerTorqueCloud(params, relative_orientation_EMM_Torques, C_plot, flag_solve4torques)
 % Plot all electrostatic torques experienced by the servicer.
 % This function mirrors the inline plotting block in
 % Electrostatic_Momentum_Management.m so both methods can be compared.
@@ -10,15 +10,17 @@ if nargin < 4
     flag_solve4torques = 1;
 end
 
+servicer_plot_dcm = C_plot;
+
 figure
 hold on
 set(gca,'FontName','times')
 
 plotTargetGeometryLocal(params.debris.D_spheres, [0;0;0], eye(3), ...
     [0.72 0.76 0.80], 0.55, flag_solve4torques)
-plotServicerSurfaceLocal(params.N_rvec_km*1000, C_plot, [0.16 0.32 0.66], 0.60)
+plotServicerSurfaceLocal(params.N_rvec_km*1000, servicer_plot_dcm, [0.16 0.32 0.66], 0.60)
 
-torque_origin = C_plot'*SN_i*params.servicer.S_COM + params.N_rvec_km*1000;
+torque_origin = servicer_plot_dcm'*params.servicer.S_COM + params.N_rvec_km*1000;
 scatter3(torque_origin(1),torque_origin(2),torque_origin(3),20,'k','filled')
 debris_origin = params.debris.D_COM;
 scatter3(debris_origin(1),debris_origin(2),debris_origin(3),20,'r','filled')
