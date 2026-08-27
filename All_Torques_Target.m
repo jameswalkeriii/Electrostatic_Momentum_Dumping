@@ -1,13 +1,14 @@
 % Computing all the torque vectors generated between two charged
 % spacecraft for all orientations
 function [data,Ls,EAs,overlap_flag] = All_Torques_Target(params,n,SN)
+n_p = round(n/2);
 range_yaw = linspace(-pi,pi,n);
-range_pitch = linspace(-pi/2,pi/2,n);
+range_pitch = linspace(-pi/2,pi/2,n_p);
 range_roll = linspace(-pi,pi,n);
 i = 1;
-Ls = zeros(n^3,3);
-data = cell(1,n^3);
-EAs = zeros(n^3,3);
+Ls = zeros(n^2*n_p,3);
+data = cell(1,n^2*n_p);
+EAs = zeros(n^2*n_p,3);
 
 overlap = 0;
 
@@ -15,7 +16,7 @@ NS = SN';
 
 for y = 1:n
     yaw = range_yaw(y);
-    for p = 1:n
+    for p = 1:n_p
         pitch = range_pitch(p);
         for r = 1:n
             roll = range_roll(r);

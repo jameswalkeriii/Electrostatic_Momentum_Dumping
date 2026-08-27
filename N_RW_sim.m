@@ -283,11 +283,6 @@ for i_tt = 1:length(Ttot)
     params.sim.us = us;
     params.sim.L_e_serv = S_L_serv;
     params.sim.L_e_deb = D_L_deb;
-    
-    if X_serv(9) > 200
-        ddd = 0;
-    end
-    
  
     results = update_storage(results,i_tt,params);
     
@@ -400,13 +395,13 @@ for i_tt = 1:length(Ttot)
         
         subplot(2,6,[11,12])
         hold on
-        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(1,1:i_tt),'LineWidth',2)
-        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(2,1:i_tt),'LineWidth',2)
-        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(3,1:i_tt),'LineWidth',2)
-        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_speed(1:i_tt),'k','LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(1,1:i_tt)*180/pi,'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(2,1:i_tt)*180/pi,'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_vel(3,1:i_tt)*180/pi,'LineWidth',2)
+        plot(results.Ttot(1:i_tt)/3600,results.debris_ang_speed(1:i_tt)*180/pi,'k','LineWidth',2)
         set(gca,'FontName','times')
         xlabel('Time (hours)')
-        ylabel('$\omega_{DN}$ (rad/s)')
+        ylabel('$\omega_{DN}$ (deg/s)')
         title('Debris Angular Velocity')
         legend('$\omega_x$','$\omega_y$','$\omega_z$','Location','best')
         xlim([results.Ttot(1), results.Ttot(end)]/3600)

@@ -52,7 +52,7 @@ M_90deg_Z = [cosd(90) , sind(90), 0;...
     -sind(90), cosd(90), 0;...
     0, 0, 1];
 
-% DCM for a 90 deg rotation about the z axis 
+% DCM for a 90 deg rotation about the x axis 
 M_90deg_X = [1,0,0;...
     0,cosd(90),-sind(90);...
     0,sind(90),cosd(90)];
@@ -101,7 +101,7 @@ params.debris.ND = [1,0,0; 0,1,0;0,0,1];
 
 EA_s = deg2rad([0,0,0]);
 SN_i = Euler3212C(EA_s);
-SN_i = eye(3);
+% SN_i = eye(3);
 EA_d = deg2rad([0,0,0]);
 DN_i = Euler3212C(EA_d);
 DN_i = eye(3);
@@ -121,97 +121,99 @@ params.servicer.S_MI = SN_i'*params.servicer.S_MI*SN_i'';
 params.debris.D_COM = DN_i'*params.debris.D_COM;
 params.debris.D_MI = DN_i'*params.debris.D_MI*DN_i'';
 
-PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-
 
 %% Computing Torques for all servicer Orientations (Stationary Target)
 
-% has to be an even number so -180 - +180 is n steps and -90 - +90 is n/2 steps
-% potentially have more target attitudes than servier attitudes
-
-flag_solve4torques = 1;
-n = 12;
-
+flag_solve4torques = 3;
+n = 3;
 params0 = params;
 clear relative_orientation_EMM_Torques
-% This is computed using 3-2-1 Euler Angles with Yaw [-180 - 180], Pitch
-% [-90 - 90], and Roll [-180 - 180] for n valus with in these ranges
+% This is computed using 3-2-1 Euler Angles with Yaw [-180 - 180], Pitch [-90 - 90], and Roll [-180 - 180] for n valus with in these ranges for n = 50, that is N = 125000
 
+torques_all_geo_T = [];
 % for i_flag=1:4
-% flag_solve4torques = i_flag;
-if flag_solve4torques == 1
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-%     save("All_torques_10kVs_30m_Sasym_Tsym_n"+n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
-elseif flag_solve4torques == 2
-
-    % Debris modeled as a single 10 m radius sphere
-    params.debris.mass = 2000; % [kg]
-    params.debris.voltage = -10e3; % [V]
-    params.debris.D_COM = [0;0;0]; % [m]
-    params.debris.D_MI = 2/5*params.debris.mass*10^2*eye(3); % [kg m^2]
-    params.debris.D_spheres = [0; 0; 0; 3];
-
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-elseif flag_solve4torques == 3
-    % Debris modeled as five spheres aligned with the Y-axis
-    params.debris.D_COM = [0;0;0]; % [m]
-    Ix = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
-    Iz = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
-    Iy = .5*params.debris.mass*3^2;
-    params.debris.D_MI = [Ix,0,0;0,Iy,0;0,0,Iz]; % [kg m^2]
-    params.debris.D_spheres = [1 1 1 1 1 1 1 1 1 1;
-        -14.2000  -11.0444   -7.8889   -4.7333   -1.5778    1.5778    4.7333    7.8889   11.0444   14.2000;
-        0 0 0 0 0 0 0 0 0 0;
-        1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5];
-    for i_sph = 1:10
-        params.debris.D_spheres(1:3,i_sph) = DN_i'*params.debris.D_spheres(1:3,i_sph);
+%     flag_solve4torques = i_flag;
+    if flag_solve4torques == 1
+        [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
+        PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
+        %save('All_torques_10kVs_30m_Sasym_Tsym.mat', 'relative_orientation_EMM_Torques')
+    elseif flag_solve4torques == 2
+        
+        % Debris modeled as a single 10 m radius sphere
+        params.debris.mass = 2000; % [kg]
+        params.debris.voltage = -10e3; % [V]
+        params.debris.D_COM = [0;0;0]; % [m]
+        params.debris.D_MI = 2/5*params.debris.mass*10^2*eye(3); % [kg m^2]
+        
+        sphLoad_sph = load('3m_sphere.mat');
+        
+        for i = 1:length(sphLoad_sph.SPHS_sphere10m)
+            sph_loc = sphLoad_sph.SPHS_sphere10m(1:3,i);
+            new_sph_loc = DN_i'*sph_loc;
+            params.debris.D_spheres(1:3,i) = new_sph_loc;
+            params.debris.D_spheres(4,i) = sphLoad_sph.SPHS_sphere10m(4,i);
+        end
+                
+        [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
+        PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
+    elseif flag_solve4torques == 3
+        % Debris modeled as five spheres aligned with the Y-axis
+        params.debris.D_COM = [0;0;0]; % [m]
+        Ix = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
+        Iz = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
+        Iy = .5*params.debris.mass*3^2;
+        params.debris.D_MI = [Ix,0,0;0,Iy,0;0,0,Iz]; % [kg m^2]
+        sphLoad_cyl = load('31p4m_cylinder.mat');
+        
+        for i = 1:length(sphLoad_cyl.cylinder_31p4m)
+            sph_loc = sphLoad_cyl.cylinder_31p4m(1:3,i);
+            new_sph_loc = DN_i'*sph_loc;
+            params.debris.D_spheres(1:3,i) = new_sph_loc;
+            params.debris.D_spheres(4,i) = sphLoad_cyl.cylinder_31p4m(4,i);
+        end
+        for i_sph = 1:length(sphLoad_cyl.cylinder_31p4m)
+            params.debris.D_spheres(1:3,i_sph) = DN_i'*M_90deg_X*params.debris.D_spheres(1:3,i_sph);
+            params.debris.D_spheres(2,i_sph) =  params.debris.D_spheres(2,i_sph) + 15;
+        end
+        
+        [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
+        PlotInitialPosition(params, eye(3), eye(3), [0,0,0],params0);
+        %     PlotInitialPositionContinuousCylinder(params, eye(3), eye(3), [0;0;0]);
+    elseif flag_solve4torques == 4
+        params.debris.D_COM = DN_i'*[2.7,-1,0]';
+        params.debris.D_MI = params.servicer.S_MI;
+        params.debris.D_spheres = sphLoad2.SPHSb;
+        for i = 1:length(sphLoad2.SPHSb)
+            sph_loc = sphLoad2.SPHSb(1:3,i);
+            new_sph_loc = DN_i'*SI*sph_loc;
+            params.debris.D_spheres(1:3,i) = new_sph_loc;
+            params.debris.D_spheres(4,i) = sphLoad2.SPHSb(4,i);
+        end
+        [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
+        PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
+    else
+        load('All_torques_10kVs_30m_Sasym_Tsym.mat');
     end
-    
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0],params0);
-%     PlotInitialPositionContinuousCylinder(params, eye(3), eye(3), [0;0;0]);
-elseif flag_solve4torques == 4
-    params.debris.D_COM = DN_i'*[2.7,-1,0]';
-    params.debris.D_MI = params.servicer.S_MI;
-    params.debris.D_spheres = sphLoad2.SPHSb;
-    for i = 1:length(sphLoad2.SPHSb)
-        sph_loc = sphLoad2.SPHSb(1:3,i);
-        new_sph_loc = DN_i'*SI*sph_loc;
-        params.debris.D_spheres(1:3,i) = new_sph_loc;
-        params.debris.D_spheres(4,i) = sphLoad2.SPHSb(4,i);
-    end
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-else
-    load("All_torques_10kVs_30m_Sasym_Tsym_n" +n+".mat");
-end
+% end
+
+params = params0;
 [ ~, ~, ~, Lserv, ~, overlapFlag] = ...
     multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
     params.V, eye(3), eye(3),...
     params.debris.D_COM, params.servicer.S_COM);
-iadd = 1;
+
+torques_all_geo_T = [torques_all_geo_T,Lserv];
 
 
-for i_all = 1:n^2*round(n/2)
-    if relative_orientation_EMM_Torques{i_all}.dist == 1
-        bad_atts{iadd} = relative_orientation_EMM_Torques{i_all};
-        relative_orientation_EMM_Torques{i_all} = {};
-        iadd = iadd + 1;
-    end
-end
-relative_orientation_EMM_Torques = relative_orientation_EMM_Torques(~cellfun('isempty', relative_orientation_EMM_Torques));
-  
 %% Initial position plot
 
-[Init_pos_targ_rot, ~, ~,Init_pos_targ_rot_all_Ls_target_rotating] = Avg_Servicer_Torque(params,n,eye(3));
+[Init_pos_targ_rot, ~, ~] = Avg_Servicer_Torque(params,n,eye(3));
 
 N_L2_norm = Init_pos_targ_rot.Ls_target_rotation_norm;
 
 PlotInitialPosition(params, eye(3), eye(3), N_L2_norm);
 
-PlotServicerTorqueCloud(params, Init_pos_targ_rot_all_Ls_target_rotating, eye(3), flag_solve4torques);
+PlotServicerTorqueCloud(params, Init_pos_targ_rot.all_Ls_target_rotating, eye(3), flag_solve4torques);
 
 
 %% Anti_torque Attitude
@@ -224,10 +226,10 @@ PlotServicerTorqueCloud(params, Init_pos_targ_rot_all_Ls_target_rotating, eye(3)
 
 PlotAntiTorqueAttitude(params, eye(3), data_anti.SN, N_L2_norm, N_Lserv_anti);
 
-[Anti_pos_targ_rot, ~, ~,Anti_pos_targ_rot_all_Ls_target_rotating] = Avg_Servicer_Torque(params,n,data_anti.SN');
+[Anti_pos_targ_rot, ~, ~] = Avg_Servicer_Torque(params,n,data_anti.SN');
 
 
-PlotServicerTorqueCloud(params, Anti_pos_targ_rot_all_Ls_target_rotating, data_anti.SN, flag_solve4torques);
+PlotServicerTorqueCloud(params, Anti_pos_targ_rot.all_Ls_target_rotating, data_anti.SN, flag_solve4torques);
 
 %% Reaction Wheel Simulations with E Torques
 
@@ -268,7 +270,7 @@ params = params0;
 
 % Intial wheel speeds 
 Om_0 = [0;0;0];
-Om_0 = [0.113037102264881,0.454683774976020,-0.883450778643108]'*650;
+% Om_0 = [0;150;0];
 params.sim.H = Om_0*Iws;
 params.wheel_speed_threshold = 3000*(2*pi)/60;
 % [data_anti,~,~] = find_anti_torque(H,data);
