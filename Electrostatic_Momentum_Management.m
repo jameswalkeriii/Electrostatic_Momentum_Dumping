@@ -1,199 +1,117 @@
 %% Electrostatic Momentem Management Base Code
 clear;
-
+Colors_for_Plotting
 % Add local code folders to the MATLAB path
 addpath(genpath('MSM'))
-addpath(genpath('functions'))
+addpath(genpath('attitude_functions'))
+addpath(genpath('Data_Bases'))
+addpath(genpath('Plotting_Functions'))
+addpath(genpath('support'))
 
 set(0,'defaulttextinterpreter','latex')
 set(0, 'defaultAxesTickLabelInterpreter','latex')
 set(0, 'defaultLegendInterpreter','latex');
 set(0,'defaultAxesFontSize',16)
-% Load MSM models and Mass properties
 
-% Parameters for SSL-1300 the acting target/debris
-    params.debris.mass = 2000; % mass [kg]; 
-    params.debris.voltage = -10e3; % [V] Voltage assuming fully conducting
-    
-    debris_D_COM = [0, 0, 0]'; % [m] SSL-1300 ish COM. Distance is from center-front of body (docking location), in body frame
-    
-    debris_D_MI = [1000; 1000; 1000].*eye(3); % [kg m2] SSL Moment of Inertia From email with Dan
+%% Additional Rotations - Changing First Attitude
+EA_s = deg2rad([0,0,0]); SN_i = Euler3212C(EA_s);
+EA_d = deg2rad([0,0,0]); DN_i = Euler3212C(EA_d);
 
-    sphLoad1 = load('SSL1300_bus.mat');% Loading MSM model for SSL-1300 geometry to match source link: body 2.8 x 2.1 x 2.0 m, panels 14 x 2.3 m each
-    
-% Parameters for GOES-R, the acting servicer/controlled spacecraft
-    params.servicer.mass = 2857; % [kg] GOES-R series dry mass
-    params.servicer.voltage = 10e3; % [V]
-    
-    % Parameters from the SolidWorks CAD in solid works frame
-    SW_COM = [-2.174; 25.5; -31.469]*0.0254; % [m] COM 
-    SW_MI = [39030563; 79464279; 94328208]*0.0002926396534292.*eye(3); % [kg m2] Moment of Inertia 
+params.NS_i = SN_i'*SN_i';
+params.ND_i = DN_i'*DN_i';
 
-    % Maps from CAD axes to Solidworks axis ?
-    DCM_IB = [0.014 0.965 -0.263; -0.041 0.263 0.964; 0.999 -0.003 0.043]; 
+%% Loading and Rotating Servicer object to default position
+servicer_shape = "GOESR_bus_noboom";
+params.servicer = load_Servicer(servicer_shape,params.NS_i);
 
-    % Maps from SoldiWorks model frame to SC body frame
-    DCM_SW2B = [0 0 1; 1 0 0; 0 1 0]; 
+%% Loading and Rotating Debris object to default position
+derbis_shape = "SSL1300_bus";
+params.debris = load_Debris(derbis_shape,params.ND_i);
 
-    servicer_S_MI = DCM_SW2B*(DCM_IB*SW_MI*DCM_IB')*DCM_SW2B'; % in body frame
-    servicer_S_COM = DCM_SW2B*SW_COM + [-2 0 0]'; % in body frame
+%% Charging and Spacecraft Scenario Parameters
 
-    sphLoad2 = load('GOESR_bus_noboom'); % Loading MSM model for GOES-R without boom
-%     sphLoad2 = load('GOESR_bus'); % Loading MSM model for GOES-R without boom
-
-
-% Proximity Parameters
-
-% Intial Position with 0,0,0 at target COM
+% Intial seperation vector - defines from debris COM to servicer COM
 params.N_rvec_km = ([30 0 0]')./1000; % [km]
 
-% DCM for a 90 deg rotation about the z axis 
-M_90deg_Z = [cosd(90) , sind(90), 0;...
-    -sind(90), cosd(90), 0;...
-    0, 0, 1];
-
-% DCM for a 90 deg rotation about the z axis 
-M_90deg_X = [1,0,0;...
-    0,cosd(90),-sind(90);...
-    0,sind(90),cosd(90)];
-
-% Rotation Matrix for a EA 2 rotation with EA = theta1
-M_90deg_Y = [cosd(-90),0,-sind(-90);...
-    0,1,0;...
-    sind(-90),0,cosd(-90)];
-
-DI = M_90deg_Y*M_90deg_X;
-
-% Rotating the SSL craft to the intial orientation
-for i = 1:length(sphLoad1.SPHSb)
-    sph_loc = sphLoad1.SPHSb(1:3,i);
-    new_sph_loc = DI*sph_loc;
-    params.debris.D_spheres(1:3,i) = new_sph_loc;
-    params.debris.D_spheres(4,i) = sphLoad1.SPHSb(4,i);
-end
-% params.debris.D_COM = debris_D_COM;
-params.debris.D_COM = [2,0,0]';
-params.debris.D_MI = debris_D_MI;
-
-SI = M_90deg_Z*M_90deg_Y;
-
-for i = 1:length(sphLoad2.SPHSb)
-    sph_loc = sphLoad2.SPHSb(1:3,i);
-    new_sph_loc = SI*sph_loc;
-    params.servicer.S_spheres(1:3,i) = new_sph_loc;
-    params.servicer.S_spheres(4,i) = sphLoad2.SPHSb(4,i);
-end
-% params.servicer.S_COM = servicer_S_COM;
-
-params.servicer.S_COM = [2.7,-1,0]';
-
-params.servicer.S_MI = servicer_S_MI;
+% Spacecraft Potentials assuming fully conducting spacecraft
+params.servicer.voltage = 10 *1e3; % [V]
+params.debris.voltage = -10 *1e3; % [V] 
 
 % Vector of spacecraft potentials
 params.V = [params.debris.voltage,params.servicer.voltage];
+%% Computing Average Torques for all servicer for a servicer at all attiudes
 
-% Intial Rotation Matrix relative to the inital orientations.
-params.servicer.NS = [1,0,0; 0,1,0;0,0,1];
-params.debris.ND = [1,0,0; 0,1,0;0,0,1];
+% n has to be an even number so -180 - +180 is n steps and -90 - +90 is n/2 steps potentially have more target attitudes than servier attitudes
+    % Defined using 3-2-1 EAs
+flag_build_database = 0; % Used for defining the torque database 
+                            % 0 - Used stored data based
+                            % 1 - Build torque data base
 
+% TODO: Fix sphere and cylinder shapes so they
+% Current Build shapes do not rotate with DN_i
+build_shape = params.debris.shape; % Defining the target shape used to build torque database
+                                        % params.debris.shape - perfect knowledge of the target
+                                        % "Sphere" 
+                                        % "Cylinder" 
+ 
+% n attitudes - gives data base of n^3/2
+n = 9;
 
-%% Additional Rotations
+% Store default parameters
+params0 = params;
 
-EA_s = deg2rad([0,0,0]);
-SN_i = Euler3212C(EA_s);
-SN_i = eye(3);
-EA_d = deg2rad([0,0,0]);
-DN_i = Euler3212C(EA_d);
-DN_i = eye(3);
-
-for i = 1:length(sphLoad2.SPHSb)
-    params.servicer.S_spheres(1:3,i) = SN_i'*params.servicer.S_spheres(1:3,i);
+if flag_build_database == 0
+    switch build_shape
+        case "SSL1300_bus"
+            % TODO: Genearilze name to spacecraft seperation distance,potential, and shapes
+            load("All_torques_10kVs_30m_Sasym_Tsym_n" +n+".mat");
+                  
+        case "GOESR_bus_noboom"
+            
+        case "3m_Sphere"
+            load("All_torques_10kVs_30m_Sasym_3mSphere_n" +n+".mat");
+        case "31.4m_Cylinder"
+            load("All_torques_10kVs_30m_Sasym_31p4mCyl_n" +n+".mat");
+    end
+elseif flag_build_database == 1
+    
+    params.debris = load_Debris(build_shape,params.ND_i);
+    
+    % Intial seperation vector - defines from debris COM to servicer COM
+    params.N_rvec_km = ([30 0 0]')./1000; % [km]
+    
+    % Spacecraft Potentials assuming fully conducting spacecraft
+    params.servicer.voltage = 10 *1e3; % [V]
+    params.debris.voltage = -10 *1e3; % [V]
+    
+    % Vector of spacecraft potentials
+    params.V = [params.debris.voltage,params.servicer.voltage];
+    
+    % Save data so only needs to be computed once
+    switch build_shape
+        case "SSL1300_bus"
+            [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
+            save("All_torques_10kVs_30m_Sasym_Tsym_n"+n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
+        case "GOESR_bus_noboom"
+            [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
+        case "3m_Sphere"
+            [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
+            save("All_torques_10kVs_30m_Sasym_3mSphere_n" +n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
+        case "31.4m_Cylinder"   
+            [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
+            save("All_torques_10kVs_30m_Sasym_31p4mCyl_n" +n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
+    end
 end
-
-for i = 1:length(sphLoad1.SPHSb)
-    params.debris.D_spheres(1:3,i) = DN_i'*params.debris.D_spheres(1:3,i);
-end
-
-params.servicer.S_COM = SN_i'*params.servicer.S_COM;
-params.servicer.S_MI = SN_i'*params.servicer.S_MI*SN_i'';
-
-
-params.debris.D_COM = DN_i'*params.debris.D_COM;
-params.debris.D_MI = DN_i'*params.debris.D_MI*DN_i'';
-
+       
+    
+% Plot Intial positions of PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);    
 PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 
+% Reset debris parameters back to default now that the database has been built
+params = params0;
+%% Removing "Bad" attitudes from the database
 
-%% Computing Torques for all servicer Orientations (Stationary Target)
-
-% has to be an even number so -180 - +180 is n steps and -90 - +90 is n/2 steps
-% potentially have more target attitudes than servier attitudes
-
-flag_solve4torques = 1;
-n = 12;
-
-params0 = params;
-clear relative_orientation_EMM_Torques
-% This is computed using 3-2-1 Euler Angles with Yaw [-180 - 180], Pitch
-% [-90 - 90], and Roll [-180 - 180] for n valus with in these ranges
-
-% for i_flag=1:4
-% flag_solve4torques = i_flag;
-if flag_solve4torques == 1
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-%     save("All_torques_10kVs_30m_Sasym_Tsym_n"+n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
-elseif flag_solve4torques == 2
-
-    % Debris modeled as a single 10 m radius sphere
-    params.debris.mass = 2000; % [kg]
-    params.debris.voltage = -10e3; % [V]
-    params.debris.D_COM = [0;0;0]; % [m]
-    params.debris.D_MI = 2/5*params.debris.mass*10^2*eye(3); % [kg m^2]
-    params.debris.D_spheres = [0; 0; 0; 3];
-
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-elseif flag_solve4torques == 3
-    % Debris modeled as five spheres aligned with the Y-axis
-    params.debris.D_COM = [0;0;0]; % [m]
-    Ix = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
-    Iz = 1/4*params.debris.mass*3^2 + 1/12*params.debris.mass*34^2;
-    Iy = .5*params.debris.mass*3^2;
-    params.debris.D_MI = [Ix,0,0;0,Iy,0;0,0,Iz]; % [kg m^2]
-    params.debris.D_spheres = [1 1 1 1 1 1 1 1 1 1;
-        -14.2000  -11.0444   -7.8889   -4.7333   -1.5778    1.5778    4.7333    7.8889   11.0444   14.2000;
-        0 0 0 0 0 0 0 0 0 0;
-        1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1.5];
-    for i_sph = 1:10
-        params.debris.D_spheres(1:3,i_sph) = DN_i'*params.debris.D_spheres(1:3,i_sph);
-    end
-    
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0],params0);
-%     PlotInitialPositionContinuousCylinder(params, eye(3), eye(3), [0;0;0]);
-elseif flag_solve4torques == 4
-    params.debris.D_COM = DN_i'*[2.7,-1,0]';
-    params.debris.D_MI = params.servicer.S_MI;
-    params.debris.D_spheres = sphLoad2.SPHSb;
-    for i = 1:length(sphLoad2.SPHSb)
-        sph_loc = sphLoad2.SPHSb(1:3,i);
-        new_sph_loc = DN_i'*SI*sph_loc;
-        params.debris.D_spheres(1:3,i) = new_sph_loc;
-        params.debris.D_spheres(4,i) = sphLoad2.SPHSb(4,i);
-    end
-    [relative_orientation_EMM_Torques, Ls,EAs] = All_Torques(params,n);
-    PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
-else
-    load("All_torques_10kVs_30m_Sasym_Tsym_n" +n+".mat");
-end
-[ ~, ~, ~, Lserv, ~, overlapFlag] = ...
-    multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000,...
-    params.V, eye(3), eye(3),...
-    params.debris.D_COM, params.servicer.S_COM);
 iadd = 1;
-
-
 for i_all = 1:n^2*round(n/2)
     if relative_orientation_EMM_Torques{i_all}.dist == 1
         bad_atts{iadd} = relative_orientation_EMM_Torques{i_all};
@@ -201,6 +119,7 @@ for i_all = 1:n^2*round(n/2)
         iadd = iadd + 1;
     end
 end
+
 relative_orientation_EMM_Torques = relative_orientation_EMM_Torques(~cellfun('isempty', relative_orientation_EMM_Torques));
   
 %% Initial position plot
@@ -211,8 +130,8 @@ N_L2_norm = Init_pos_targ_rot.Ls_target_rotation_norm;
 
 PlotInitialPosition(params, eye(3), eye(3), N_L2_norm);
 
-PlotServicerTorqueCloud(params, Init_pos_targ_rot_all_Ls_target_rotating, eye(3), flag_solve4torques);
-
+% Fix/ensure PlotServicerTorqueCloud works properly
+% PlotServicerTorqueCloud(params, Init_pos_targ_rot_all_Ls_target_rotating, eye(3), flag_build_database);
 
 %% Anti_torque Attitude
 
@@ -227,7 +146,7 @@ PlotAntiTorqueAttitude(params, eye(3), data_anti.SN, N_L2_norm, N_Lserv_anti);
 [Anti_pos_targ_rot, ~, ~,Anti_pos_targ_rot_all_Ls_target_rotating] = Avg_Servicer_Torque(params,n,data_anti.SN');
 
 
-PlotServicerTorqueCloud(params, Anti_pos_targ_rot_all_Ls_target_rotating, data_anti.SN, flag_solve4torques);
+% PlotServicerTorqueCloud(params, Anti_pos_targ_rot_all_Ls_target_rotating, data_anti.SN, flag_build_database);
 
 %% Reaction Wheel Simulations with E Torques
 
@@ -264,24 +183,18 @@ D_w_BN = [0.0;0.0;0.0];
  
 Ttot = 0:dt:tn;
 
-params = params0;
-
 % Intial wheel speeds 
 Om_0 = [0;0;0];
-Om_0 = [0.113037102264881,0.454683774976020,-0.883450778643108]'*650;
+% Om_0 = [0.113037102264881,0.454683774976020,-0.883450778643108]'*650;
+
 params.sim.H = Om_0*Iws;
 params.wheel_speed_threshold = 3000*(2*pi)/60;
-% [data_anti,~,~] = find_anti_torque(H,data);
 
 X0_servicer = [S_sig_BN0;S_w_BN;Om_0];
 X0_target = [D_sig_BN0;D_w_BN];
 
 % relative_orientation_EMM_Torques = [];
 sim_flag = 0;
-if sim_flag == 1
-    params.wheel_speed_threshold = 6000*(2*pi)/60;
-    
-end
 
 K_h = 0.0;
 
@@ -305,156 +218,3 @@ end
 
 
 
-
-%%
-% end
-% %%
-% serv_N_COM = params0.servicer.S_COM;
-% deb_N_COM = params0.debris.D_COM;
-% 
-% figure
-% hold on
-% set(gca,'FontName','times')
-% makeSphsPicture_2craft(params0.debris.D_spheres, params0.servicer.S_spheres,...
-%     [0 0 0], params0.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
-% 
-% 
-% q(1) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,1),torques_all_geo_T(2,1),torques_all_geo_T(3,1),6e3,'Linewidth',3);
-% 
-% q(2) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,2),torques_all_geo_T(2,2),torques_all_geo_T(3,2),6e3,'Linewidth',3);
-% 
-% q(3) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,3),torques_all_geo_T(2,3),torques_all_geo_T(3,3),6e3,'Linewidth',3);
-% 
-% q(4) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,4),torques_all_geo_T(2,4),torques_all_geo_T(3,4),6e3,'Linewidth',3);
-% 
-% 
-% scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
-% scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
-% 
-% 
-% c=colorbar;
-% c.Label.String = 'Surface Charge Density (nC/m^2)';
-% c.Label.FontSize = 14;
-% legend(q,'True Shape','Sphere', 'Cylinder','Single Panel')
-% 
-% axis equal
-% xlim([27,40])
-% ylim([-5,17])
-% zlim([-12,12])
-% xlabel('X [m]')
-% ylabel('Y [m]')
-% zlabel('Z [m]')
-% grid off
-% view(3)
-% hold off
-% 
-% figure
-% hold on
-% set(gca,'FontName','times')
-% makeSphsPicture_2craft(params0.debris.D_spheres, params0.servicer.S_spheres,...
-%     [0 0 0], params0.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
-% 
-% 
-% q(1) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,1),torques_all_geo_T(2,1),torques_all_geo_T(3,1),10e5,'Linewidth',3);
-% 
-% q(2) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,2),torques_all_geo_T(2,2),torques_all_geo_T(3,2),10e5,'Linewidth',3);
-% 
-% q(3) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,3),torques_all_geo_T(2,3),torques_all_geo_T(3,3),10e5,'Linewidth',3);
-% 
-% q(4) = quiver3(serv_N_COM(1) + params.N_rvec_km(1)*1000, ...
-%     serv_N_COM(2) + params.N_rvec_km(2)*1000,...
-%     serv_N_COM(3) + params.N_rvec_km(3)*1000,...
-%     torques_all_geo_T(1,4),torques_all_geo_T(2,4),torques_all_geo_T(3,4),10e5,'Linewidth',3);
-% 
-% scatter3(deb_N_COM(1),deb_N_COM(2),deb_N_COM(3),20,'r','filled')
-% scatter3(serv_N_COM(1)+30,serv_N_COM(2),serv_N_COM(3),20,'k','filled')
-% 
-% 
-% c=colorbar;
-% c.Label.String = 'Surface Charge Density (nC/m^2)';
-% c.Label.FontSize = 14;
-% legend(q,'Two Panel','Sphere', 'Cylinder','Single Panel')
-% axis equal
-% xlim([-10,40])
-% ylim([-17,17])
-% zlim([-12,12])
-% xlabel('X [m]')
-% ylabel('Y [m]')
-% zlabel('Z [m]')
-% grid off
-% view(3)
-% hold off
-% 
-%   
-
-
-
-% 
-% torque_origin = params.servicer.S_COM + params.N_rvec_km*1000;
-% figure
-% hold on
-% torque_norms = zeros(length(rotating_debris_torques),1);
-% for i_L = 1:length(rotating_debris_torques)
-%     torque_norms(i_L) = norm(rotating_debris_torques{i_L}.N_L_elect_serv);
-% end
-% max_torque = max(torque_norms);
-% if max_torque == 0
-%     max_torque = 1;
-% end
-% torque_arrow_scale = 8/max_torque;
-% torque_colors = torqueMagnitudeColormapLocal(256);
-% 
-% for i_L = 1:length(rotating_debris_torques)
-%     E_torque = rotating_debris_torques{i_L}.N_L_elect_serv;
-%     if torque_norms(i_L) > 0
-%         color_idx = min(256,max(1,ceil(256*torque_norms(i_L)/max_torque)));
-%         E_torque = torque_arrow_scale*E_torque;
-%         quiver3(torque_origin(1), torque_origin(2), torque_origin(3),...
-%             E_torque(1),E_torque(2),E_torque(3),0,...
-%             'Linewidth',0.8,'Color',torque_colors(color_idx,:))
-%     end
-% end
-% 
-% set(gca,'FontName','times')
-% makeSphsPicture_2craft(params.debris.D_spheres, params.servicer.S_spheres,...
-%     [0 0 0], params.N_rvec_km*1000,  [params.debris.voltage, params.servicer.voltage])
-% 
-% scatter3(params.debris.D_COM(1),params.debris.D_COM(2),params.debris.D_COM(3),20,'r','filled')
-% scatter3(params.servicer.S_COM(1)+30,params.servicer.S_COM(2),params.servicer.S_COM(3),20,'k','filled')
-% 
-% % params.debris.D_COM, params.servicer.S_COM
-% % c=colorbar;
-% % c.Label.String = 'Surface Charge Density (nC/m^2)';
-% % c.Label.FontSize = 14;
-% 
-% axis equal
-% xlim([-3,40])
-% ylim([-17,17])
-% zlim([-12,12])
-% xlabel('X [m]')
-% ylabel('Y [m]')
-% zlabel('Z [m]')
-% grid off
-% view(3)
-% hold off

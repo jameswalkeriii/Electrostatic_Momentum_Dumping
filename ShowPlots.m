@@ -1,4 +1,5 @@
 function ShowPlots(params,results,ttotal,x0_H,flag) 
+Colors_for_Plotting
 % Set plot parameters
     if flag == true
         time_hours = results.Ttot/3600;
