@@ -126,7 +126,7 @@ for i = 1:length(debris_params.sphs.SPHSb)
 end
 
 debris_params.D_COM = ND_i*DI*debris_params.D_COM;
-debris_params.D_MI = ND_i*DI*debris_params.D_MI*(DI*ND_i)'; % Mapping Momentum of inertia to the new frame
+debris_params.D_MI = ND_i*DI*debris_params.D_MI*(ND_i*DI)'; % Mapping Momentum of inertia to the new frame
 
 
 end

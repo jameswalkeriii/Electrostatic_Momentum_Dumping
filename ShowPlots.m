@@ -163,7 +163,7 @@ Colors_for_Plotting
         figure
         hold on
         addModeBands(gca, time_hours, mode_hist, mode_colors, calcPlotLimits(results.L_e_servicer_tot, false))
-        plot(time_hours,results.Lrtot_servicer,'Linewidth',2)
+        plot(time_hours,results.ustot_servicer,'Linewidth',2)
         ylabel('Control Torque (Nm)','Fontsize',14)
         xlabel('Time (hrs)','Fontsize',14)
         legend('L\_x','L\_y','L\_z','Fontsize',14)

@@ -14,11 +14,11 @@ set(0, 'defaultLegendInterpreter','latex');
 set(0,'defaultAxesFontSize',16)
 
 %% Additional Rotations - Changing First Attitude
-EA_s = deg2rad([0,0,0]); SN_i = Euler3212C(EA_s);
+EA_s = deg2rad([-90,0,0]); SN_i = Euler3212C(EA_s);
 EA_d = deg2rad([0,0,0]); DN_i = Euler3212C(EA_d);
 
-params.NS_i = SN_i'*SN_i';
-params.ND_i = DN_i'*DN_i';
+params.NS_i = SN_i';
+params.ND_i = DN_i';
 
 %% Loading and Rotating Servicer object to default position
 servicer_shape = "GOESR_bus_noboom";
@@ -39,11 +39,13 @@ params.debris.voltage = -10 *1e3; % [V]
 
 % Vector of spacecraft potentials
 params.V = [params.debris.voltage,params.servicer.voltage];
+
+PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 %% Computing Average Torques for all servicer for a servicer at all attiudes
 
 % n has to be an even number so -180 - +180 is n steps and -90 - +90 is n/2 steps potentially have more target attitudes than servier attitudes
     % Defined using 3-2-1 EAs
-flag_build_database = 0; % Used for defining the torque database 
+flag_build_database = 1; % Used for defining the torque database 
                             % 0 - Used stored data based
                             % 1 - Build torque data base
 
@@ -55,7 +57,7 @@ build_shape = params.debris.shape; % Defining the target shape used to build tor
                                         % "Cylinder" 
  
 % n attitudes - gives data base of n^3/2
-n = 9;
+n = 6;
 
 % Store default parameters
 params0 = params;
@@ -68,9 +70,9 @@ if flag_build_database == 0
                   
         case "GOESR_bus_noboom"
             
-        case "3m_Sphere"
+        case "Sphere"
             load("All_torques_10kVs_30m_Sasym_3mSphere_n" +n+".mat");
-        case "31.4m_Cylinder"
+        case "Cylinder"
             load("All_torques_10kVs_30m_Sasym_31p4mCyl_n" +n+".mat");
     end
 elseif flag_build_database == 1
@@ -91,13 +93,13 @@ elseif flag_build_database == 1
     switch build_shape
         case "SSL1300_bus"
             [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
-            save("All_torques_10kVs_30m_Sasym_Tsym_n"+n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
+%             save("All_torques_10kVs_30m_Sasym_Tsym_n"+n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
         case "GOESR_bus_noboom"
             [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
-        case "3m_Sphere"
+        case "Sphere"
             [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
             save("All_torques_10kVs_30m_Sasym_3mSphere_n" +n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
-        case "31.4m_Cylinder"   
+        case "Cylinder"   
             [relative_orientation_EMM_Torques, ~,~] = All_Torques(params,n);
             save("All_torques_10kVs_30m_Sasym_31p4mCyl_n" +n+".mat", 'relative_orientation_EMM_Torques', '-v7.3');
     end
@@ -109,19 +111,36 @@ PlotInitialPosition(params, eye(3), eye(3), [0,0,0]);
 
 % Reset debris parameters back to default now that the database has been built
 params = params0;
+ada = [];
+sd = [];
+for i=1:length(relative_orientation_EMM_Torques)
+    ada(i) = relative_orientation_EMM_Torques{i}.average_dist_angle;
+    sd(i) = relative_orientation_EMM_Torques{i}.std_dist_angle;
+    
+end
 %% Removing "Bad" attitudes from the database
 
-iadd = 1;
-for i_all = 1:n^2*round(n/2)
-    if relative_orientation_EMM_Torques{i_all}.dist == 1
-        bad_atts{iadd} = relative_orientation_EMM_Torques{i_all};
-        relative_orientation_EMM_Torques{i_all} = {};
-        iadd = iadd + 1;
-    end
-end
+% iadd = 1;
+% for i_all = 1:n^2*round(n/2)
+%     if relative_orientation_EMM_Torques{i_all}.dist == 1
+%         bad_atts{iadd} = relative_orientation_EMM_Torques{i_all};
+%         relative_orientation_EMM_Torques{i_all} = {};
+%         iadd = iadd + 1;
+%     end
+% end
 
 relative_orientation_EMM_Torques = relative_orientation_EMM_Torques(~cellfun('isempty', relative_orientation_EMM_Torques));
-  
+
+%% Rotate Database torques to be in the now rotated servicer frame (if NS_i =! 0)
+% R = params.NS_i;
+% % R = eye(3);
+% for i = 1:length(relative_orientation_EMM_Torques)
+%     relative_orientation_EMM_Torques{i}.avg_N_L_elect_serv = R * relative_orientation_EMM_Torques{i}.avg_N_L_elect_serv(:);
+%     
+%     relative_orientation_EMM_Torques{i}.NS = relative_orientation_EMM_Torques{i}.NS*R';
+%     relative_orientation_EMM_Torques{i}.SN = relative_orientation_EMM_Torques{i}.NS;
+% end
+
 %% Initial position plot
 
 [Init_pos_targ_rot, ~, ~,Init_pos_targ_rot_all_Ls_target_rotating] = Avg_Servicer_Torque(params,n,eye(3));
@@ -135,7 +154,7 @@ PlotInitialPosition(params, eye(3), eye(3), N_L2_norm);
 
 %% Anti_torque Attitude
 
-[data_anti,i_anti,tot] = find_anti_torque(N_L2_norm,relative_orientation_EMM_Torques);
+[data_anti,i_anti,tot] = find_anti_torque(N_L2_norm,relative_orientation_EMM_Torques,params.NS_i);
         
 [ ~, ~, ~, N_Lserv_anti, ~, overlapFlag] = ...
     multisphereFT( params.debris.D_spheres, params.servicer.S_spheres, params.N_rvec_km*1000, params.V,...
@@ -174,18 +193,18 @@ D_w_BN = [0.0;0.0;0.0];
 
 
 % Gains
-    K = 5;
-    P = 500;
+    K = 2;
+    P = 1500;
 % Total simulation time (s)
-    tn = 100*3600;
+    tn = 600*3600;
 % Step size (s)
-    dt = 1;
+    dt = 2;
  
 Ttot = 0:dt:tn;
 
 % Intial wheel speeds 
 Om_0 = [0;0;0];
-% Om_0 = [0.113037102264881,0.454683774976020,-0.883450778643108]'*650;
+% Om_0 = N_L2_norm'*650;
 
 params.sim.H = Om_0*Iws;
 params.wheel_speed_threshold = 3000*(2*pi)/60;
@@ -200,21 +219,5 @@ K_h = 0.0;
 
 results =...
     N_RW_sim(X0_servicer,X0_target, Iws, Gs0, K, P, Ttot,params,relative_orientation_EMM_Torques,K_h);
-%%
+
 ShowPlots(params,results,Ttot(end),params.N_rvec_km,true)
-
-
-
-function cmap = torqueMagnitudeColormapLocal(n_colors)
-    color_stops = [0.10 0.22 0.55;
-                   0.00 0.58 0.72;
-                   0.18 0.72 0.42;
-                   0.74 0.20 0.62;
-                   0.45 0.05 0.18];
-    stop_locations = linspace(0,1,size(color_stops,1));
-    query_locations = linspace(0,1,n_colors);
-    cmap = interp1(stop_locations, color_stops, query_locations);
-end
-
-
-

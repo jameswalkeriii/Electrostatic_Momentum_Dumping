@@ -129,7 +129,7 @@ for i = 1:length(servicer_params.sphs.SPHSb)
 end
 
 servicer_params.S_COM = NS_i*SI*servicer_params.S_COM;
-servicer_params.S_MI = (NS_i*SI)*servicer_params.S_MI*(SI*NS_i)'; % Mapping Momentum of inertia to the new frame
+servicer_params.S_MI = (NS_i*SI)*servicer_params.S_MI*(NS_i*SI)'; % Mapping Momentum of inertia to the new frame
 
 
 end

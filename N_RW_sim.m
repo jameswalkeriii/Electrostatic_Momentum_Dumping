@@ -66,7 +66,7 @@ for i_tt = 1:length(Ttot)
                 sig_SR = C2MRP(SR);
                 theta_SR = 4*atan(norm(sig_SR));
                 % Once the spacecraft has reached the desired attitude
-                if abs(theta_SR) < 0.01
+                if abs(theta_SR) < 0.035
                     params.attitude_mode = "Second Attitude";
                     params.wheel_speed_signs = sign(X_serv(6+1:6+N,1));
                 end
@@ -292,20 +292,7 @@ for i_tt = 1:length(Ttot)
 
         disp("Time  "+ t +"s:   "+time_left_percentage*100 + "% complete")
         percent_check = percent_check + 1;
-     
-%         plotting_servicer = params.servicer.N_spheres;
-%         for i = 1:size(params.servicer.N_spheres,2)
-%             sph_loc = params.servicer.N_spheres(1:3,i);
-%             new_sph_loc_serv = SN*sph_loc;
-%             plotting_servicer(1:3,i) = new_sph_loc_serv;
-%         end
-%         
-%         plotting_debris = params.debris.N_spheres;
-%         for i = 1:size(params.debris.N_spheres,2)
-%             sph_loc = params.debris.N_spheres(1:3,i);
-%             new_sph_loc_deb = DN*sph_loc;
-%             plotting_debris(1:3,i) = new_sph_loc_deb;
-%         end
+    
         
         N_H = SN'*params.sim.H;
         

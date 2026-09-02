@@ -1,4 +1,4 @@
-function [data_anti,i_anti,tot] = find_anti_torque(H,data)
+function [data_anti,i_anti,tot] = find_anti_torque(H,data,NS)
 %Must imput a non normalized H
 % MAKE SURE ALL IN THE SAME FRAME
 anti_parr_check_min = -1;
@@ -31,7 +31,7 @@ dot_product_magnitude_percent = dot_product_magnitude/max(dot_product_magnitude)
 
 for i = 1:length(data)
     
-    weighted_value = 10*dot_product_norm(i) + 1*dot_product_magnitude_percent(i);
+    weighted_value = 10*dot_product_norm(i) + 0.5*dot_product_magnitude_percent(i) - .1*data{i}.average_dist_angle ;
 %      weighted_value = dot_product_norm(i);
     
     tot(i,1:4) = [dot_product_norm(i),dot_product_magnitude(i),dot_product_magnitude_percent(i),weighted_value];
@@ -43,4 +43,6 @@ for i = 1:length(data)
         anti_parr_check_min = weighted_value;
     end
     
+end
+ddd= 0;
 end
